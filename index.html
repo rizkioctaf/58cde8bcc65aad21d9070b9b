@@ -130,7 +130,7 @@
             <!-- TREND CHARTS -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <h3 class="text-sm font-bold text-slate-800 mb-3">Tren Throughput Harian <span class="text-indigo-600">(Hanya Packing)</span></h3>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">Tren Throughput Harian <span id="titleTrendThroughput" class="text-indigo-600"></span></h3>
                     <div class="w-full overflow-x-auto custom-scrollbar pb-1">
                         <div id="wrapperTrendThroughput" style="position: relative; height: 260px; min-width: 100%;">
                             <canvas id="chartTrendThroughput"></canvas>
@@ -139,7 +139,7 @@
                 </div>
                 
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <h3 class="text-sm font-bold text-slate-800 mb-3">Tren Produktivitas (order/mnhr) <span class="text-indigo-600">(Hanya Packing)</span></h3>
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">Tren Produktivitas (order/mnhr) <span id="titleTrendProd" class="text-indigo-600"></span></h3>
                     <div class="w-full overflow-x-auto custom-scrollbar pb-1">
                         <div id="wrapperTrendProd" style="position: relative; height: 260px; min-width: 100%;">
                             <canvas id="chartTrendProd"></canvas>
@@ -181,7 +181,7 @@
     </div>
 
     <script>
-        const DB_NAME = "ProductivityCache_V4";
+        const DB_NAME = "ProductivityCache_V5";
         const STORE_NAME = "csvData";
         let db, allLoadedData = [], chartInstances = {}, activityChartInstances = [], isPreloading = false;
         
@@ -232,6 +232,7 @@
             return (!rawName) ? "Unknown" : (rawName.includes(']') ? rawName.split(']')[1].trim() : rawName.trim());
         }
 
+        // CUSTOM PLUGIN CHART.JS (Pembaruan Kalkulasi Target Jam Kerja)
         Chart.register({
             id: 'stackedBarTextExt',
             afterDatasetsDraw(chart) {
@@ -244,11 +245,15 @@
                 ctx.textBaseline = 'middle';
                 
                 const totals = chart.config.data.customTotals; 
-                if (!totals) return;
+                const targetHours = chart.config.data.targetHours || 8; // Menerima dinamis target jam dari render
+                
+                if (!totals) { ctx.restore(); return; }
                 totals.forEach((totalValue, index) => {
                     const meta = chart.getDatasetMeta(0);
                     if(!meta.data[index]) return;
-                    const pct = ((totalValue / 8) * 100).toFixed(1);
+                    
+                    // Kalkulasi presentase terhadap total jam ideal berdasar hari yang dipilih
+                    const pct = ((totalValue / targetHours) * 100).toFixed(1);
                     ctx.fillText(`  ${totalValue.toFixed(1)}j (${pct}%)`, x.getPixelForValue(totalValue) + 5, meta.data[index].y);
                 });
                 ctx.restore();
@@ -358,13 +363,37 @@
 
         function renderDashboard() {
             const selectedOp = document.getElementById('operatorSelector').value;
+            const rangeDays = parseInt(document.getElementById('rangeSelector').value) || 1;
             const isAll = (selectedOp === 'ALL');
+            
+            // Perhitungan Dynamic Target Hours (1 hari = 8 jam)
+            const maxTargetHours = rangeDays * 8; 
+
             let activeData = isAll ? allLoadedData : allLoadedData.filter(r => cleanName(r["Ops ID/Name"]) === selectedOp);
+            
+            // Penentuan Target Aktivitas untuk Grafik Tren (Cerdas)
+            let trendTargetActivity = 'Packing'; 
+            if (!isAll) {
+                // Cari aktivitas dengan jam kerja terbanyak untuk individu ini
+                const actHoursTemp = {};
+                activeData.forEach(r => {
+                    let act = r["Activity Type"] === 'Runner' || r["Activity Type"] === 'Others' ? 'Others / Runner' : r["Activity Type"];
+                    actHoursTemp[act] = (actHoursTemp[act] || 0) + (parseFloat(r["Working Hours (mnhr)"]) || 0);
+                });
+                let maxH = -1;
+                for (let act in actHoursTemp) {
+                    if (actHoursTemp[act] > maxH) { maxH = actHoursTemp[act]; trendTargetActivity = act; }
+                }
+            }
+            
+            // Update Label Judul Tren Grafik
+            document.getElementById('titleTrendThroughput').innerText = `(Hanya ${trendTargetActivity})`;
+            document.getElementById('titleTrendProd').innerText = `(Hanya ${trendTargetActivity})`;
 
             let tThroughput = 0, tHours = 0, sumProd = 0, countProd = 0;
             const opsCount = new Set(), trendMap = {}, allUsersHours = {}, activityDetailGroups = {};
 
-            // Initialize trendMap with all dates so X-Axis is consistent even if Packing is missing
+            // Initialize trendMap untuk memastikan semua tanggal tampil meskipun aktivitas kosong di hari tsb
             activeData.forEach(row => { trendMap[row._dateLabel] = { tp: 0, hrs: 0, prodSum: 0, count: 0, allHrs: 0 }; });
 
             activeData.forEach(row => {
@@ -377,9 +406,9 @@
                 tThroughput += tp; tHours += hrs; sumProd += prod; countProd++;
                 opsCount.add(opName);
 
-                // Trend khusus Packing (Throughput & Prod) + All Hours
-                trendMap[dateLbl].allHrs += hrs; // untuk grafik individu (seluruh jam)
-                if (activity === 'Packing') {
+                // Trend Mapping (Hanya mengolah data trendTargetActivity)
+                trendMap[dateLbl].allHrs += hrs; 
+                if (activity === trendTargetActivity) {
                     trendMap[dateLbl].tp += tp; 
                     trendMap[dateLbl].prodSum += prod; 
                     trendMap[dateLbl].count++;
@@ -421,13 +450,13 @@
 
             destroyMainCharts('chartTrendThroughput');
             chartInstances['chartTrendThroughput'] = new Chart(document.getElementById('chartTrendThroughput').getContext('2d'), {
-                type: 'line', data: { labels: labelsTrend, datasets: [{ label: 'Throughput (Packing)', data: dataTp, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', borderWidth: 2, fill: true, tension: 0.4 }] },
+                type: 'line', data: { labels: labelsTrend, datasets: [{ label: `Throughput (${trendTargetActivity})`, data: dataTp, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', borderWidth: 2, fill: true, tension: 0.4 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
             });
 
             destroyMainCharts('chartTrendProd');
             chartInstances['chartTrendProd'] = new Chart(document.getElementById('chartTrendProd').getContext('2d'), {
-                type: 'line', data: { labels: labelsTrend, datasets: [{ label: 'Avg Prod (Packing)', data: dataProd, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 2, fill: true, tension: 0.4 }] },
+                type: 'line', data: { labels: labelsTrend, datasets: [{ label: `Avg Prod (${trendTargetActivity})`, data: dataProd, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 2, fill: true, tension: 0.4 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
             });
 
@@ -445,7 +474,6 @@
                 document.getElementById('allSection').classList.remove('hidden');
                 document.getElementById('individualSection').classList.add('hidden');
 
-                // Urutkan Terbanyak ke Terkecil (Descending)
                 const sortedOps = Object.keys(allUsersHours).sort((a,b) => allUsersHours[b].total - allUsersHours[a].total);
                 const totalsArray = sortedOps.map(op => allUsersHours[op].total);
                 
@@ -459,7 +487,13 @@
                 }));
 
                 chartInstances['hoursChart'] = new Chart(document.getElementById('hoursChart').getContext('2d'), {
-                    type: 'bar', data: { labels: sortedOps, datasets: datasetsStacked, customTotals: totalsArray },
+                    type: 'bar', 
+                    data: { 
+                        labels: sortedOps, 
+                        datasets: datasetsStacked, 
+                        customTotals: totalsArray,
+                        targetHours: maxTargetHours // Mengirim target parameter baru ke plugin kustom
+                    },
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 80 } },
                         scales: { x: { stacked: true, suggestedMax: Math.max(...totalsArray, 1) * 1.25, grid: { color: '#f8fafc' } }, y: { stacked: true, grid: { display: false } } },
@@ -477,7 +511,7 @@
                 const sortedDetailOps = Object.keys(groupData.items).map(key => ({
                     name: key, throughput: groupData.items[key].throughput,
                     avgProd: groupData.items[key].count > 0 ? (groupData.items[key].prodSum / groupData.items[key].count) : 0
-                })).sort((a,b) => isAll ? (b.throughput - a.throughput) : 0); // Jika individu, pertahankan urutan tanggal
+                })).sort((a,b) => isAll ? (b.throughput - a.throughput) : 0); 
 
                 if (sortedDetailOps.length === 0) return;
 
@@ -506,9 +540,7 @@
                     data: {
                         labels: sortedDetailOps.map(d => d.name),
                         datasets: [
-                            // Avg Produktivitas order = 1 agar tampil di atas (Z-index higher)
                             { label: 'Avg Produktivitas', data: sortedDetailOps.map(d => d.avgProd), type: 'line', borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.3, pointRadius: 3, yAxisID: 'y1', order: 1 },
-                            // Throughput order = 2 agar tampil di belakang
                             { label: 'Throughput', data: sortedDetailOps.map(d => d.throughput), backgroundColor: '#cbd5e1', borderRadius: 4, yAxisID: 'y', order: 2 }
                         ]
                     },
@@ -521,7 +553,6 @@
             });
         }
 
-        // --- 5. REAKTIVITAS INSTAN ---
         const handleFilterChange = () => {
             const dateVal = document.getElementById('dateSelector').value;
             const rangeVal = parseInt(document.getElementById('rangeSelector').value);
