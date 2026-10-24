@@ -12,419 +12,458 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .chart-container { position: relative; height: 500px; width: 100%; }
-        .chart-container-large { position: relative; height: 700px; width: 100%; }
-        /* Simple spinner */
-        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #3b82f6; animation: spin 1s linear infinite; }
+        .chart-container { position: relative; height: 400px; width: 100%; }
+        .chart-container-large { position: relative; height: 650px; width: 100%; }
+        .spinner { border: 3px solid rgba(255, 255, 255, 0.3); width: 16px; height: 16px; border-radius: 50%; border-left-color: #ffffff; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .transition-opacity { transition: opacity 0.5s ease-in-out; }
     </style>
 </head>
-<body class="p-6 text-gray-800">
+<body class="p-6 text-gray-800 min-h-screen flex flex-col relative">
 
-    <div class="max-w-7xl mx-auto space-y-6">
-        <!-- Header -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <!-- Background Sync Indicator -->
+    <div id="syncIndicator" class="fixed top-4 right-4 bg-emerald-600 text-white text-xs px-3 py-2 rounded-full shadow-lg flex items-center gap-2 z-50 hidden transition-opacity opacity-100">
+        <div class="spinner" id="syncSpinner"></div>
+        <span id="syncText">Pre-loading data historis...</span>
+    </div>
+
+    <div class="max-w-7xl mx-auto w-full space-y-6 flex-grow">
+        <!-- Header & Controls -->
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">Dashboard Monitoring Produktivitas</h1>
-                <p class="text-sm text-gray-500 mt-1">Menampilkan data otomatis dari folder <span class="font-mono text-blue-600 bg-blue-50 px-1 rounded">/data</span></p>
+                <h1 class="text-2xl font-bold text-gray-800">Dashboard Produktivitas</h1>
+                <p class="text-sm text-gray-500 mt-1">Pemantauan Kinerja Workstation & Individu</p>
             </div>
             
-            <!-- Date Picker Selector -->
-            <div class="flex items-center space-x-3 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
-                <label for="dateSelector" class="text-sm font-medium text-gray-700">Tanggal Data:</label>
-                <input type="date" id="dateSelector" class="border border-gray-300 rounded-md px-3 py-1.5 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                <button id="btnRefresh" class="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-md transition" title="Muat Ulang Data">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-                </button>
+            <div class="flex flex-wrap items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div class="flex flex-col">
+                    <label class="text-xs font-medium text-gray-600 mb-1">Tanggal Referensi:</label>
+                    <input type="date" id="dateSelector" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <div class="flex flex-col">
+                    <label class="text-xs font-medium text-gray-600 mb-1">Rentang Waktu:</label>
+                    <select id="rangeSelector" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500">
+                        <option value="1" selected>1 Hari (Hari ini)</option>
+                        <option value="7">1 Minggu (7 Hari)</option>
+                        <option value="30">1 Bulan (30 Hari)</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col">
+                    <label class="text-xs font-medium text-gray-600 mb-1">Pilih Operator:</label>
+                    <select id="operatorSelector" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 min-w-[150px]">
+                        <option value="ALL">-- Semua Orang --</option>
+                    </select>
+                </div>
+
+                <div class="flex flex-col justify-end mt-5">
+                    <button id="btnLoad" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md transition shadow-sm font-medium text-sm">
+                        Tampilkan
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- System Messages (Loading, Errors) -->
-        <div id="systemMessage" class="bg-blue-50 p-6 rounded-xl border border-blue-100 flex flex-col items-center justify-center space-y-3">
-            <div class="spinner" id="loadingSpinner"></div>
-            <h3 class="text-sm font-medium text-blue-900" id="messageText">Mencari data terbaru...</h3>
-            <p class="text-xs text-blue-600 text-center" id="messageSubText">Sistem sedang memeriksa folder /data/</p>
-        </div>
+        <!-- Dashboard Content -->
+        <div id="dashboardContent" class="space-y-6">
+            <!-- Context Banner -->
+            <div id="contextBanner" class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg text-indigo-800 text-sm font-medium">
+                Memuat data...
+            </div>
 
-        <!-- Dashboard Content (Hidden by default) -->
-        <div id="dashboardContent" class="hidden space-y-6">
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-medium text-gray-500">Total Operator</h3>
+                    <h3 class="text-sm font-medium text-gray-500" id="lblTotalOps">Total Operator</h3>
                     <p class="text-2xl font-bold text-gray-900 mt-2" id="valTotalOps">-</p>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-medium text-gray-500">Total Throughput (Order)</h3>
+                    <h3 class="text-sm font-medium text-gray-500">Total Throughput</h3>
                     <p class="text-2xl font-bold text-gray-900 mt-2" id="valTotalThroughput">-</p>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-medium text-gray-500">Total Jam Kerja (mnhr)</h3>
+                    <h3 class="text-sm font-medium text-gray-500">Total Jam Kerja</h3>
                     <p class="text-2xl font-bold text-gray-900 mt-2" id="valTotalHours">-</p>
                 </div>
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-medium text-gray-500">Rata-rata Produktivitas</h3>
+                    <h3 class="text-sm font-medium text-gray-500">Avg Produktivitas Harian</h3>
                     <p class="text-2xl font-bold text-gray-900 mt-2" id="valAvgProductivity">-</p>
                 </div>
             </div>
 
-            <!-- Activity Performance Charts -->
-            <div id="chartsContainer" class="grid grid-cols-1 gap-6"></div>
-
-            <!-- Stacked Working Hours Chart -->
-            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                <h3 class="text-lg font-bold text-gray-800 mb-4">Kontribusi Jam Kerja Berdasarkan Aktivitas per Operator (Target 8 Jam)</h3>
-                <div class="chart-container-large">
-                    <canvas id="hoursChart"></canvas>
+            <!-- TREND CHARTS -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-base font-bold text-gray-800 mb-4 text-center">Perkembangan Throughput Harian</h3>
+                    <div class="chart-container"><canvas id="chartTrendThroughput"></canvas></div>
                 </div>
-                <!-- Detail Table -->
-                <div class="mt-8 overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Operator</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Jam Kerja</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total (%)</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rincian per Aktivitas</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBodyHours" class="bg-white divide-y divide-gray-200 text-sm"></tbody>
-                    </table>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-base font-bold text-gray-800 mb-4 text-center">Perkembangan Produktivitas (order/mnhr)</h3>
+                    <div class="chart-container"><canvas id="chartTrendProd"></canvas></div>
                 </div>
             </div>
+
+            <!-- INDIVIDUAL SPECIFIC CHARTS -->
+            <div id="individualSection" class="hidden grid-cols-1 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-base font-bold text-gray-800 mb-4 text-center">Perkembangan Jam Kerja Harian Individu</h3>
+                    <div class="chart-container"><canvas id="chartTrendHours"></canvas></div>
+                </div>
+            </div>
+
+            <!-- ALL OPERATORS SPECIFIC CHARTS -->
+            <div id="allSection" class="hidden space-y-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">Total Akumulasi Jam Kerja Berdasarkan Aktivitas (Periode Terpilih)</h3>
+                    <div class="chart-container-large">
+                        <canvas id="hoursChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
-        let chartInstances = [];
-        let hoursChartInstance = null;
+        // --- 1. INDEXEDDB CACHE SETUP ---
+        const DB_NAME = "ProductivityCacheDB_V2";
+        const STORE_NAME = "csvCache";
+        let db;
 
-        // Custom plugins Chart.js
-        const stackedBarTextPlugin = {
-            id: 'stackedBarTextExt',
-            afterDatasetsDraw(chart, args, options) {
-                const { ctx, scales: { x } } = chart;
-                ctx.save();
-                ctx.font = '12px Inter, sans-serif';
-                ctx.fillStyle = '#4b5563';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                
-                const totals = chart.config.data.customTotals; 
-                if (!totals) return;
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, 1);
+                request.onerror = () => reject("IndexedDB error");
+                request.onsuccess = event => { db = event.target.result; resolve(db); };
+                request.onupgradeneeded = event => {
+                    db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        db.createObjectStore(STORE_NAME, { keyPath: "dateStr" });
+                    }
+                };
+            });
+        }
 
-                totals.forEach((totalValue, index) => {
-                    const meta = chart.getDatasetMeta(0);
-                    if(!meta.data[index]) return;
-                    
-                    const yPos = meta.data[index].y;
-                    const xPos = x.getPixelForValue(totalValue); 
-                    
-                    const pct = (totalValue / 8) * 100;
-                    const text = `  ${totalValue.toFixed(2)} jam (${pct.toFixed(1)}%)`;
-                    
-                    ctx.fillText(text, xPos + 2, yPos);
-                });
-                ctx.restore();
-            }
-        };
+        function getCache(dateStr) {
+            return new Promise(resolve => {
+                const tx = db.transaction([STORE_NAME], "readonly");
+                const request = tx.objectStore(STORE_NAME).get(dateStr);
+                request.onsuccess = () => resolve(request.result ? request.result.data : null);
+                request.onerror = () => resolve(null);
+            });
+        }
 
+        function setCache(dateStr, data) {
+            return new Promise(resolve => {
+                const tx = db.transaction([STORE_NAME], "readwrite");
+                tx.objectStore(STORE_NAME).put({ dateStr: dateStr, data: data });
+                tx.oncomplete = () => resolve();
+            });
+        }
+
+        // --- 2. GLOBAL VARIABLES & UTILITIES ---
+        let allLoadedData = []; 
+        let chartInstances = {}; 
+        let isPreloading = false;
+        
         const activityColors = [
             'rgba(59, 130, 246, 0.85)', 'rgba(16, 185, 129, 0.85)', 'rgba(245, 158, 11, 0.85)', 
             'rgba(239, 68, 68, 0.85)', 'rgba(139, 92, 246, 0.85)', 'rgba(236, 72, 153, 0.85)'
         ];
 
-        // --- UTILITIES TANGGAL ---
-        // Format Date object to YYYYMMDD
         function formatToYYYYMMDD(d) {
-            let month = '' + (d.getMonth() + 1), day = '' + d.getDate(), year = d.getFullYear();
-            if (month.length < 2) month = '0' + month;
+            let m = '' + (d.getMonth() + 1), day = '' + d.getDate(), y = d.getFullYear();
+            if (m.length < 2) m = '0' + m;
             if (day.length < 2) day = '0' + day;
-            return [year, month, day].join('');
+            return [y, m, day].join('');
         }
-        // Format Date object to YYYY-MM-DD (for HTML input date)
+
         function formatToInputDate(d) {
-            let month = '' + (d.getMonth() + 1), day = '' + d.getDate(), year = d.getFullYear();
-            if (month.length < 2) month = '0' + month;
+            let m = '' + (d.getMonth() + 1), day = '' + d.getDate(), y = d.getFullYear();
+            if (m.length < 2) m = '0' + m;
             if (day.length < 2) day = '0' + day;
-            return [year, month, day].join('-');
+            return [y, m, day].join('-');
         }
-
-        // --- MANAJEMEN UI ---
-        function showMessage(msg, subMsg, isError = false, loading = true) {
-            document.getElementById('dashboardContent').classList.add('hidden');
-            const box = document.getElementById('systemMessage');
-            box.classList.remove('hidden', 'bg-blue-50', 'border-blue-100', 'bg-red-50', 'border-red-200');
-            box.classList.add(isError ? 'bg-red-50' : 'bg-blue-50');
-            box.classList.add(isError ? 'border-red-200' : 'border-blue-100');
-            
-            document.getElementById('loadingSpinner').style.display = loading ? 'block' : 'none';
-            document.getElementById('messageText').innerText = msg;
-            document.getElementById('messageText').className = isError ? 'text-sm font-medium text-red-700' : 'text-sm font-medium text-blue-900';
-            document.getElementById('messageSubText').innerText = subMsg || '';
-            document.getElementById('messageSubText').className = isError ? 'text-xs text-red-600 text-center' : 'text-xs text-blue-600 text-center';
-        }
-
-        function hideMessage() {
-            document.getElementById('systemMessage').classList.add('hidden');
-            document.getElementById('dashboardContent').classList.remove('hidden');
-        }
-
-        // --- FILE FETCHING LOGIC ---
-        // Mencari file terbaru dengan mundur h-1 maksimal 30 hari
-        async function findLatestData() {
-            let currentDate = new Date();
-            let attempts = 0;
-            let maxAttempts = 30;
-
-            showMessage('Mencari data terbaru...', 'Sistem sedang mengecek file dari hari ini mundur ke belakang.');
-
-            while (attempts < maxAttempts) {
-                const dateStr = formatToYYYYMMDD(currentDate);
-                const fileUrl = `data/Filtered_workstation_productivity_individual_${dateStr}.csv`;
-                
-                try {
-                    // Try to fetch file. Using GET since some local servers block HEAD.
-                    const response = await fetch(fileUrl);
-                    if (response.ok) {
-                        // File found! Update Datepicker UI to match the found date
-                        document.getElementById('dateSelector').value = formatToInputDate(currentDate);
-                        parseAndLoadCSV(fileUrl, dateStr);
-                        return;
-                    }
-                } catch (e) {
-                    console.log(`Pengecekan gagal (CORS/Network) untuk ${dateStr}`);
-                }
-                
-                // Kurangi 1 hari
-                currentDate.setDate(currentDate.getDate() - 1);
-                attempts++;
-            }
-            
-            showMessage('Data Tidak Ditemukan', 'Tidak ada data CSV yang ditemukan dalam 30 hari terakhir. Pastikan file ada di dalam folder "data/"', true, false);
-        }
-
-        // Load spesifik file berdasarkan tanggal yang dipilih dari Datepicker
-        async function loadDataByDate(dateStrInput) {
-            const dateObj = new Date(dateStrInput);
-            const dateYYYYMMDD = formatToYYYYMMDD(dateObj);
-            const fileUrl = `data/Filtered_workstation_productivity_individual_${dateYYYYMMDD}.csv`;
-            
-            showMessage(`Memuat data tanggal ${dateYYYYMMDD}...`, `Mencari file ${fileUrl}`);
-            
-            try {
-                const response = await fetch(fileUrl);
-                if (response.ok) {
-                    parseAndLoadCSV(fileUrl, dateYYYYMMDD);
-                } else {
-                    showMessage('File Tidak Ditemukan', `Tidak ada data untuk tanggal ${dateStrInput}. (Error 404)`, true, false);
-                }
-            } catch (e) {
-                showMessage('Terjadi Kesalahan Akses', `Gagal memuat file. Pastikan aplikasi berjalan di Local Server, bukan file://`, true, false);
-            }
-        }
-
-        function parseAndLoadCSV(fileUrl, dateStr) {
-            Papa.parse(fileUrl, {
-                download: true,
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    if(results.data.length === 0) {
-                        showMessage('Data Kosong', `File untuk tanggal ${dateStr} kosong.`, true, false);
-                        return;
-                    }
-                    hideMessage();
-                    processData(results.data);
-                },
-                error: function(err) {
-                    showMessage('Gagal membaca CSV', err.message, true, false);
-                }
-            });
-        }
-
-        // Event Listener untuk DatePicker & Refresh Button
-        document.getElementById('dateSelector').addEventListener('change', function(e) {
-            if(e.target.value) {
-                loadDataByDate(e.target.value);
-            }
-        });
-        document.getElementById('btnRefresh').addEventListener('click', function() {
-            const dateVal = document.getElementById('dateSelector').value;
-            if(dateVal) loadDataByDate(dateVal);
-            else findLatestData();
-        });
-
-        // Trigger pencarian saat halaman pertama kali dimuat
-        document.addEventListener("DOMContentLoaded", () => {
-            findLatestData();
-        });
 
         function cleanName(rawName) {
             if(!rawName) return "Unknown";
             return rawName.includes(']') ? rawName.split(']')[1].trim() : rawName.trim();
         }
 
-        function processData(data) {
-            let totalThroughput = 0, totalHours = 0, totalProductivityRecords = 0, sumProductivity = 0;
-            const uniqueOps = new Set(), activityGroups = {}, hoursSummary = {}, activityTypesSet = new Set();
-
-            data.forEach(row => {
-                const opNameRaw = row["Ops ID/Name"];
-                if (!opNameRaw) return;
+        // --- PLUGIN CHART.JS ---
+        Chart.register({
+            id: 'stackedBarTextExt',
+            afterDatasetsDraw(chart) {
+                if (chart.canvas.id !== 'hoursChart') return;
+                const { ctx, scales: { x } } = chart;
+                ctx.save();
+                ctx.font = '11px Inter, sans-serif';
+                ctx.fillStyle = '#4b5563';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
                 
-                const opName = cleanName(opNameRaw);
-                uniqueOps.add(opName);
+                const totals = chart.config.data.customTotals; 
+                if (!totals) return;
+                totals.forEach((totalValue, index) => {
+                    const meta = chart.getDatasetMeta(0);
+                    if(!meta.data[index]) return;
+                    ctx.fillText(`  ${totalValue.toFixed(1)}j`, x.getPixelForValue(totalValue) + 2, meta.data[index].y);
+                });
+                ctx.restore();
+            }
+        });
 
-                const throughput = parseInt(row["Total Throughput (Order)"]) || 0;
-                const hours = parseFloat(row["Working Hours (mnhr)"]) || 0;
-                const productivity = parseInt(row["Hourly Productivity (order/mnhr)"]) || 0;
-                
-                let activity = row["Activity Type"];
-                if (activity === 'Runner' || activity === 'Others') activity = 'Others / Runner';
-                
-                activityTypesSet.add(activity);
-                totalThroughput += throughput;
-                totalHours += hours;
-                sumProductivity += productivity;
-                totalProductivityRecords++;
+        // --- 3. DATA FETCHING (DENGAN CACHE) ---
+        async function fetchDailyData(dateYYYYMMDD, isBackground = false) {
+            const cachedData = await getCache(dateYYYYMMDD);
+            if (cachedData) return cachedData; // Instan dari cache!
 
-                if (!activityGroups[activity]) activityGroups[activity] = {};
-                if (!activityGroups[activity][opName]) activityGroups[activity][opName] = { throughput: 0, hours: 0, productivityArr: [] };
-                
-                activityGroups[activity][opName].throughput += throughput;
-                activityGroups[activity][opName].hours += hours;
-                activityGroups[activity][opName].productivityArr.push(productivity);
-
-                if (!hoursSummary[opName]) hoursSummary[opName] = { totalHours: 0, breakdown: {} };
-                if (!hoursSummary[opName].breakdown[activity]) hoursSummary[opName].breakdown[activity] = 0;
-                
-                hoursSummary[opName].breakdown[activity] += hours;
-                hoursSummary[opName].totalHours += hours;
-            });
-
-            document.getElementById('valTotalOps').innerText = uniqueOps.size;
-            document.getElementById('valTotalThroughput').innerText = totalThroughput.toLocaleString('id-ID');
-            document.getElementById('valTotalHours').innerText = totalHours.toFixed(1);
-            document.getElementById('valAvgProductivity').innerText = totalProductivityRecords > 0 ? (sumProductivity / totalProductivityRecords).toFixed(1) : 0;
-
-            chartInstances.forEach(c => c.destroy());
-            chartInstances = [];
-            const chartsContainer = document.getElementById('chartsContainer');
-            chartsContainer.innerHTML = '';
-
-            Object.keys(activityGroups).forEach(act => {
-                const opsData = activityGroups[act];
-                const sortedOps = Object.keys(opsData)
-                    .map(name => {
-                        const arr = opsData[name].productivityArr;
-                        return { name, throughput: opsData[name].throughput, avgProd: arr.reduce((a,b)=>a+b,0) / arr.length };
-                    }).sort((a, b) => b.throughput - a.throughput);
-
-                if (sortedOps.length === 0) return;
-
-                const wrapper = document.createElement('div');
-                wrapper.className = 'bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6';
-                wrapper.innerHTML = `<h3 class="text-lg font-bold text-gray-800 mb-4">Kinerja Individu: ${act}</h3>
-                                     <div class="chart-container"><canvas id="chart_${act.replace(/[^a-zA-Z0-9]/g, '')}"></canvas></div>`;
-                chartsContainer.appendChild(wrapper);
-
-                const ctx = document.getElementById(`chart_${act.replace(/[^a-zA-Z0-9]/g, '')}`).getContext('2d');
-                chartInstances.push(new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: sortedOps.map(d => d.name),
-                        datasets: [
-                            {
-                                label: 'Total Throughput',
-                                data: sortedOps.map(d => d.throughput),
-                                backgroundColor: 'rgba(75, 85, 99, 0.2)',
-                                borderColor: 'rgba(75, 85, 99, 1)',
-                                borderWidth: 1, yAxisID: 'y'
-                            },
-                            {
-                                label: 'Rata-rata Produktivitas',
-                                data: sortedOps.map(d => d.avgProd),
-                                type: 'line',
-                                borderColor: 'rgba(239, 68, 68, 1)',
-                                backgroundColor: 'rgba(239, 68, 68, 1)',
-                                borderWidth: 2, marker: 'circle', yAxisID: 'y1'
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        interaction: { mode: 'index', intersect: false },
-                        scales: {
-                            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Total Throughput' } },
-                            y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Avg Productivity' }, grid: { drawOnChartArea: false } }
+            const url = `data/Filtered_workstation_productivity_individual_${dateYYYYMMDD}.csv`;
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    // Simpan array kosong agar tidak di-fetch ulang (Misal: hari libur)
+                    await setCache(dateYYYYMMDD, []);
+                    return []; 
+                }
+                const csvText = await response.text();
+                return new Promise(resolve => {
+                    Papa.parse(csvText, {
+                        header: true, skipEmptyLines: true,
+                        complete: async function(results) {
+                            await setCache(dateYYYYMMDD, results.data);
+                            resolve(results.data);
                         }
-                    }
-                }));
-            });
+                    });
+                });
+            } catch (e) {
+                return []; 
+            }
+        }
 
-            if (hoursChartInstance) hoursChartInstance.destroy();
-            const allActivities = Array.from(activityTypesSet);
-            const sortedOps = Object.keys(hoursSummary).sort((a, b) => hoursSummary[a].totalHours - hoursSummary[b].totalHours);
-            
-            const stackedDatasets = allActivities.map((act, index) => ({
-                label: act,
-                data: sortedOps.map(op => hoursSummary[op].breakdown[act] || 0),
-                backgroundColor: activityColors[index % activityColors.length],
-            }));
+        // Fungsi Utama untuk merender ulang berdasarkan rentang waktu
+        async function loadDataRange(endDateStr, rangeDays) {
+            allLoadedData = [];
+            const endDate = new Date(endDateStr);
+            const datesToFetch = [];
 
-            const totalHoursDataArray = sortedOps.map(op => hoursSummary[op].totalHours);
-            const ctxHr = document.getElementById('hoursChart').getContext('2d');
-            
-            hoursChartInstance = new Chart(ctxHr, {
-                type: 'bar',
-                plugins: [stackedBarTextPlugin],
-                data: {
-                    labels: sortedOps,
-                    datasets: stackedDatasets,
-                    customTotals: totalHoursDataArray
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true, maintainAspectRatio: false,
-                    layout: { padding: { right: 180 } },
-                    plugins: {
-                        legend: { display: true, position: 'top' },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    if (context.raw === 0) return null;
-                                    return `${context.dataset.label}: ${context.raw.toFixed(2)} jam (${((context.raw / 8) * 100).toFixed(1)}%)`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { stacked: true, title: { display: true, text: 'Total Jam Kerja (mnhr)' }, suggestedMax: Math.max(...totalHoursDataArray) * 1.15 },
-                        y: { stacked: true }
-                    }
+            for (let i = 0; i < rangeDays; i++) {
+                const d = new Date(endDate);
+                d.setDate(d.getDate() - i);
+                datesToFetch.push(formatToYYYYMMDD(d));
+            }
+            datesToFetch.reverse(); 
+
+            let loadedDaysCount = 0;
+            // Gunakan Promise.all agar penarikan data (dari Cache/Network) berlangsung paralel dan super cepat
+            const allPromises = datesToFetch.map(dStr => fetchDailyData(dStr));
+            const results = await Promise.all(allPromises);
+
+            results.forEach((dailyData, index) => {
+                const dStr = datesToFetch[index];
+                if (dailyData.length > 0) {
+                    loadedDaysCount++;
+                    dailyData.forEach(row => {
+                        row._dateLabel = `${dStr.substring(6,8)}/${dStr.substring(4,6)}`; 
+                        allLoadedData.push(row);
+                    });
                 }
             });
 
-            const tableBody = document.getElementById('tableBodyHours');
-            tableBody.innerHTML = '';
-            [...sortedOps].reverse().forEach(op => {
-                const totalH = hoursSummary[op].totalHours;
-                const totalPct = (totalH / 8) * 100;
-                const breakdownText = Object.entries(hoursSummary[op].breakdown)
-                    .filter(([act, val]) => val > 0)
-                    .map(([act, val]) => `<span class="inline-block bg-gray-100 rounded px-2 py-1 m-1 border border-gray-200 text-xs">${act}: <b>${val.toFixed(1)}j</b> (${((val/8)*100).toFixed(1)}%)</span>`)
-                    .join('');
+            if (allLoadedData.length === 0) {
+                document.getElementById('contextBanner').innerText = "Data kosong atau tidak ditemukan pada rentang waktu ini.";
+                document.getElementById('contextBanner').className = "bg-red-50 border border-red-100 p-4 rounded-lg text-red-800 text-sm font-medium";
+            } else {
+                document.getElementById('contextBanner').innerText = `Menampilkan data aktif dari ${loadedDaysCount} hari (dalam rentang ${rangeDays} hari yang dipilih).`;
+                document.getElementById('contextBanner').className = "bg-indigo-50 border border-indigo-100 p-4 rounded-lg text-indigo-800 text-sm font-medium";
+            }
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${op}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-gray-700">${totalH.toFixed(2)} jam</td>
-                    <td class="px-6 py-4 whitespace-nowrap ${totalPct > 100 ? 'text-red-600 font-semibold' : 'text-green-600'}">${totalPct.toFixed(1)}%</td>
-                    <td class="px-6 py-4 text-gray-700 flex flex-wrap gap-1">${breakdownText}</td>`;
-                tableBody.appendChild(tr);
-            });
+            updateOperatorDropdown();
+            renderDashboard();
         }
+
+        // PRELOADER LATAR BELAKANG (Diam-diam menyimpan 30 hari terakhir ke DB)
+        async function startBackgroundPreload(baseDateStr) {
+            if(isPreloading) return;
+            isPreloading = true;
+            
+            const syncInd = document.getElementById('syncIndicator');
+            const syncText = document.getElementById('syncText');
+            const syncSpin = document.getElementById('syncSpinner');
+            
+            syncInd.classList.remove('hidden', 'opacity-0');
+            syncText.innerText = "Pre-loading 30 hari ke cache...";
+            syncSpin.style.display = 'block';
+
+            const baseDate = new Date(baseDateStr);
+            let cachedCount = 0;
+
+            // Unduh secara berurutan agar tidak memberatkan browser
+            for (let i = 1; i <= 30; i++) { // Mulai dari 1 karena 0 sudah diload
+                const d = new Date(baseDate);
+                d.setDate(d.getDate() - i);
+                const data = await fetchDailyData(formatToYYYYMMDD(d), true);
+                if(data.length > 0) cachedCount++;
+            }
+
+            syncSpin.style.display = 'none';
+            syncText.innerText = `Cache siap (${cachedCount} file)! Data sekarang instan.`;
+            
+            setTimeout(() => {
+                syncInd.classList.add('opacity-0');
+                setTimeout(() => syncInd.classList.add('hidden'), 500);
+            }, 4000);
+            isPreloading = false;
+        }
+
+        // --- 4. DATA PROCESSING & RENDERING ---
+        
+        function updateOperatorDropdown() {
+            const currentSelected = document.getElementById('operatorSelector').value;
+            const opsSet = new Set();
+            allLoadedData.forEach(r => opsSet.add(cleanName(r["Ops ID/Name"])));
+            
+            const select = document.getElementById('operatorSelector');
+            select.innerHTML = '<option value="ALL">-- Semua Orang --</option>';
+            
+            Array.from(opsSet).sort().forEach(op => {
+                const option = document.createElement('option');
+                option.value = op; option.text = op;
+                select.appendChild(option);
+            });
+
+            if (opsSet.has(currentSelected)) select.value = currentSelected;
+        }
+
+        function destroyChart(id) {
+            if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
+        }
+
+        function renderDashboard() {
+            const selectedOp = document.getElementById('operatorSelector').value;
+            const isAll = (selectedOp === 'ALL');
+            let activeData = isAll ? allLoadedData : allLoadedData.filter(r => cleanName(r["Ops ID/Name"]) === selectedOp);
+
+            let tThroughput = 0, tHours = 0, sumProd = 0, countProd = 0;
+            const opsCount = new Set(), trendMap = {}, allUsersHours = {}, allActivities = new Set();
+
+            activeData.forEach(row => {
+                const throughput = parseInt(row["Total Throughput (Order)"]) || 0;
+                const hours = parseFloat(row["Working Hours (mnhr)"]) || 0;
+                const prod = parseInt(row["Hourly Productivity (order/mnhr)"]) || 0;
+                let activity = row["Activity Type"] === 'Runner' || row["Activity Type"] === 'Others' ? 'Others / Runner' : row["Activity Type"];
+                const dateLbl = row._dateLabel, opName = cleanName(row["Ops ID/Name"]);
+
+                tThroughput += throughput; tHours += hours; sumProd += prod; countProd++;
+                opsCount.add(opName);
+
+                if (!trendMap[dateLbl]) trendMap[dateLbl] = { tp: 0, hrs: 0, prodSum: 0, count: 0 };
+                trendMap[dateLbl].tp += throughput; trendMap[dateLbl].hrs += hours; 
+                trendMap[dateLbl].prodSum += prod; trendMap[dateLbl].count++;
+
+                if (isAll) {
+                    allActivities.add(activity);
+                    if (!allUsersHours[opName]) allUsersHours[opName] = { total: 0, acts: {} };
+                    if (!allUsersHours[opName].acts[activity]) allUsersHours[opName].acts[activity] = 0;
+                    allUsersHours[opName].acts[activity] += hours;
+                    allUsersHours[opName].total += hours;
+                }
+            });
+
+            document.getElementById('lblTotalOps').innerText = isAll ? "Total Operator Aktif" : "Hari Aktif Bekerja";
+            document.getElementById('valTotalOps').innerText = isAll ? opsCount.size : Object.keys(trendMap).length;
+            document.getElementById('valTotalThroughput').innerText = tThroughput.toLocaleString('id-ID');
+            document.getElementById('valTotalHours').innerText = tHours.toFixed(1);
+            document.getElementById('valAvgProductivity').innerText = countProd > 0 ? (sumProd / countProd).toFixed(0) : 0;
+
+            const labelsTrend = Object.keys(trendMap); 
+            const dataTp = labelsTrend.map(l => trendMap[l].tp);
+            const dataHrs = labelsTrend.map(l => trendMap[l].hrs);
+            const dataProd = labelsTrend.map(l => (trendMap[l].count > 0 ? (trendMap[l].prodSum / trendMap[l].count) : 0));
+
+            destroyChart('chartTrendThroughput');
+            chartInstances['chartTrendThroughput'] = new Chart(document.getElementById('chartTrendThroughput').getContext('2d'), {
+                type: 'line',
+                data: { labels: labelsTrend, datasets: [{ label: 'Total Throughput', data: dataTp, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.3 }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            destroyChart('chartTrendProd');
+            chartInstances['chartTrendProd'] = new Chart(document.getElementById('chartTrendProd').getContext('2d'), {
+                type: 'line',
+                data: { labels: labelsTrend, datasets: [{ label: 'Avg Productivity', data: dataProd, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 2, fill: true, tension: 0.3 }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            if (!isAll) {
+                document.getElementById('allSection').classList.add('hidden');
+                document.getElementById('individualSection').classList.remove('hidden');
+
+                destroyChart('chartTrendHours');
+                chartInstances['chartTrendHours'] = new Chart(document.getElementById('chartTrendHours').getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: labelsTrend, datasets: [{ label: 'Jam Kerja (mnhr)', data: dataHrs, backgroundColor: '#f59e0b', borderRadius: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false }
+                });
+            } else {
+                document.getElementById('allSection').classList.remove('hidden');
+                document.getElementById('individualSection').classList.add('hidden');
+
+                destroyChart('hoursChart');
+                const sortedOps = Object.keys(allUsersHours).sort((a,b) => allUsersHours[a].total - allUsersHours[b].total);
+                const totalsArray = sortedOps.map(op => allUsersHours[op].total);
+                const datasetsStacked = Array.from(allActivities).map((act, idx) => ({
+                    label: act,
+                    data: sortedOps.map(op => allUsersHours[op].acts[act] || 0),
+                    backgroundColor: activityColors[idx % activityColors.length],
+                }));
+
+                chartInstances['hoursChart'] = new Chart(document.getElementById('hoursChart').getContext('2d'), {
+                    type: 'bar',
+                    data: { labels: sortedOps, datasets: datasetsStacked, customTotals: totalsArray },
+                    options: {
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 50 } },
+                        scales: { x: { stacked: true, suggestedMax: Math.max(...totalsArray, 1) * 1.1 }, y: { stacked: true } }
+                    }
+                });
+            }
+        }
+
+        // --- 5. EVENTS & INITIALIZATION ---
+        // Pemicu Instan dari UI (Tidak perlu klik tombol jika dropdow/range diubah)
+        const triggerUpdate = () => {
+            const dateVal = document.getElementById('dateSelector').value;
+            const rangeVal = parseInt(document.getElementById('rangeSelector').value);
+            if (dateVal) loadDataRange(dateVal, rangeVal);
+        };
+
+        document.getElementById('btnLoad').addEventListener('click', triggerUpdate);
+        
+        // Memungkinkan pergantian instan saat dropdown dipilih (Instant Feel)
+        document.getElementById('rangeSelector').addEventListener('change', triggerUpdate);
+        document.getElementById('operatorSelector').addEventListener('change', () => {
+            if(allLoadedData.length > 0) renderDashboard();
+        });
+
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                await initDB();
+                
+                // Gunakan tanggal hari ini sebagai default
+                const today = new Date();
+                document.getElementById('dateSelector').value = formatToInputDate(today);
+                
+                // 1. Muat 1 Hari pertama agar UI langsung muncul seketika
+                await loadDataRange(formatToInputDate(today), 1);
+                
+                // 2. Mulai pre-loading 30 hari ke belakang di background
+                startBackgroundPreload(today);
+
+            } catch (e) {
+                console.error("Gagal inisialisasi", e);
+            }
+        });
     </script>
 </body>
 </html>
