@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Produktivitas Workstation Komprehensif</title>
-    <!-- Tailwind CSS -->
+    <!-- Ganti menjadi offline jika Anda sudah mengunduh file-file ini -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- PapaParse for CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     
     <style>
@@ -39,29 +37,24 @@
 </head>
 <body class="p-3 md:p-5 text-slate-800 min-h-screen flex flex-col relative">
 
-    <!-- Background Sync Indicator -->
     <div id="syncIndicator" class="fixed bottom-6 right-6 md:top-6 md:bottom-auto bg-slate-800 text-white text-xs px-4 py-2.5 rounded-full shadow-xl flex items-center gap-3 z-50 transition-all duration-500 opacity-0 pointer-events-none">
         <div class="spinner" id="syncSpinner"></div>
-        <span id="syncText" class="font-medium tracking-wide">Menyiapkan data offline...</span>
+        <span id="syncText" class="font-medium tracking-wide">Mengunduh data dari Cloudflare R2...</span>
     </div>
 
     <div class="max-w-7xl mx-auto w-full space-y-4 flex-grow">
         
-        <!-- Header & Filter Section (Compact, Non-Sticky) -->
         <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
-            
             <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 mb-4">
                 <div>
                     <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">Dashboard Kinerja</h1>
                 </div>
-                <!-- Tanggal Dinamis Text -->
                 <div class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-100 flex items-center gap-2">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     <span id="activeDateRangeText">Memuat tanggal...</span>
                 </div>
             </div>
             
-            <!-- Controls Grid -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Titik Tanggal</label>
@@ -86,13 +79,9 @@
             </div>
         </div>
 
-        <!-- Dashboard Content -->
         <div id="dashboardContent" class="space-y-4 fade-in">
-            
-            <!-- Context Banner (Error / Empty State) -->
             <div id="contextBanner" class="hidden rounded-xl p-3 text-xs font-medium border"></div>
 
-            <!-- Summary Cards -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                 <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
                     <div class="flex items-center gap-2 mb-2">
@@ -181,7 +170,18 @@
     </div>
 
     <script>
-        const DB_NAME = "ProductivityCache_V5";
+        // =====================================================================
+        // KONFIGURASI CLOUDFLARE R2
+        // Ganti URL di bawah dengan Public Domain/R2.dev URL bucket Anda
+        // =====================================================================
+        const R2_BASE_URL = "https://pub-xxxxxxxxxxxxxxxxxxxx.r2.dev"; 
+        
+        // Contoh jika Anda sudah set custom domain: 
+        // const R2_BASE_URL = "https://data.namadomainanda.com";
+        // =====================================================================
+
+
+        const DB_NAME = "ProductivityCache_V6";
         const STORE_NAME = "csvData";
         let db, allLoadedData = [], chartInstances = {}, activityChartInstances = [], isPreloading = false;
         
@@ -232,7 +232,6 @@
             return (!rawName) ? "Unknown" : (rawName.includes(']') ? rawName.split(']')[1].trim() : rawName.trim());
         }
 
-        // CUSTOM PLUGIN CHART.JS (Pembaruan Kalkulasi Target Jam Kerja)
         Chart.register({
             id: 'stackedBarTextExt',
             afterDatasetsDraw(chart) {
@@ -245,14 +244,12 @@
                 ctx.textBaseline = 'middle';
                 
                 const totals = chart.config.data.customTotals; 
-                const targetHours = chart.config.data.targetHours || 8; // Menerima dinamis target jam dari render
+                const targetHours = chart.config.data.targetHours || 8; 
                 
                 if (!totals) { ctx.restore(); return; }
                 totals.forEach((totalValue, index) => {
                     const meta = chart.getDatasetMeta(0);
                     if(!meta.data[index]) return;
-                    
-                    // Kalkulasi presentase terhadap total jam ideal berdasar hari yang dipilih
                     const pct = ((totalValue / targetHours) * 100).toFixed(1);
                     ctx.fillText(`  ${totalValue.toFixed(1)}j (${pct}%)`, x.getPixelForValue(totalValue) + 5, meta.data[index].y);
                 });
@@ -268,7 +265,8 @@
             const cachedData = await getCache(dateYYYYMMDD);
             if (cachedData) return cachedData; 
             try {
-                const res = await fetch(`data/Filtered_workstation_productivity_individual_${dateYYYYMMDD}.csv`);
+                // MENGGUNAKAN URL DARI CLOUDFLARE R2
+                const res = await fetch(`${R2_BASE_URL}/dashboard-toman/Filtered_workstation_productivity_individual_${dateYYYYMMDD}.csv`);
                 if (!res.ok) { await setCache(dateYYYYMMDD, []); return []; }
                 const csvText = await res.text();
                 return new Promise(resolve => {
@@ -366,15 +364,12 @@
             const rangeDays = parseInt(document.getElementById('rangeSelector').value) || 1;
             const isAll = (selectedOp === 'ALL');
             
-            // Perhitungan Dynamic Target Hours (1 hari = 8 jam)
             const maxTargetHours = rangeDays * 8; 
 
             let activeData = isAll ? allLoadedData : allLoadedData.filter(r => cleanName(r["Ops ID/Name"]) === selectedOp);
             
-            // Penentuan Target Aktivitas untuk Grafik Tren (Cerdas)
             let trendTargetActivity = 'Packing'; 
             if (!isAll) {
-                // Cari aktivitas dengan jam kerja terbanyak untuk individu ini
                 const actHoursTemp = {};
                 activeData.forEach(r => {
                     let act = r["Activity Type"] === 'Runner' || r["Activity Type"] === 'Others' ? 'Others / Runner' : r["Activity Type"];
@@ -386,14 +381,12 @@
                 }
             }
             
-            // Update Label Judul Tren Grafik
             document.getElementById('titleTrendThroughput').innerText = `(Hanya ${trendTargetActivity})`;
             document.getElementById('titleTrendProd').innerText = `(Hanya ${trendTargetActivity})`;
 
             let tThroughput = 0, tHours = 0, sumProd = 0, countProd = 0;
             const opsCount = new Set(), trendMap = {}, allUsersHours = {}, activityDetailGroups = {};
 
-            // Initialize trendMap untuk memastikan semua tanggal tampil meskipun aktivitas kosong di hari tsb
             activeData.forEach(row => { trendMap[row._dateLabel] = { tp: 0, hrs: 0, prodSum: 0, count: 0, allHrs: 0 }; });
 
             activeData.forEach(row => {
@@ -406,7 +399,6 @@
                 tThroughput += tp; tHours += hrs; sumProd += prod; countProd++;
                 opsCount.add(opName);
 
-                // Trend Mapping (Hanya mengolah data trendTargetActivity)
                 trendMap[dateLbl].allHrs += hrs; 
                 if (activity === trendTargetActivity) {
                     trendMap[dateLbl].tp += tp; 
@@ -414,7 +406,6 @@
                     trendMap[dateLbl].count++;
                 }
 
-                // Stacked Grouping (Hanya ALL)
                 if (isAll) {
                     if (!allUsersHours[opName]) allUsersHours[opName] = { total: 0, acts: {} };
                     if (!allUsersHours[opName].acts[activity]) allUsersHours[opName].acts[activity] = 0;
@@ -422,7 +413,6 @@
                     allUsersHours[opName].total += hrs;
                 }
 
-                // Activity Chart Grouping (ALL & Individu)
                 let groupKey = isAll ? opName : dateLbl;
                 if (!activityDetailGroups[activity]) activityDetailGroups[activity] = { totalTp: 0, items: {} };
                 if (!activityDetailGroups[activity].items[groupKey]) {
@@ -492,7 +482,7 @@
                         labels: sortedOps, 
                         datasets: datasetsStacked, 
                         customTotals: totalsArray,
-                        targetHours: maxTargetHours // Mengirim target parameter baru ke plugin kustom
+                        targetHours: maxTargetHours
                     },
                     options: {
                         indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 80 } },
@@ -502,7 +492,6 @@
                 });
             }
 
-            // ACTIVITY CHARTS (Render untuk ALL maupun Individu)
             destroyActivityCharts();
             const actContainer = document.getElementById('activityChartsContainer');
 
