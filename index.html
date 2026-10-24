@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Produktivitas Workstation</title>
+    <title>Dashboard Produktivitas Workstation Komprehensif</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
@@ -16,11 +16,10 @@
         
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #f8fafc; /* Slate 50 - lebih soft untuk mata */
+            background-color: #f8fafc;
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Styling untuk scrollbar agar tampil estetik di desktop & mobile */
         .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
@@ -34,57 +33,53 @@
             animation: spin 1s linear infinite; 
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* Animasi Transisi Halus */
         .fade-in { animation: fadeIn 0.4s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="p-4 md:p-6 text-slate-800 min-h-screen flex flex-col relative">
+<body class="p-3 md:p-5 text-slate-800 min-h-screen flex flex-col relative">
 
     <!-- Background Sync Indicator -->
-    <div id="syncIndicator" class="fixed bottom-6 right-6 md:top-6 md:bottom-auto bg-slate-800 text-white text-xs px-4 py-2.5 rounded-full shadow-xl flex items-center gap-3 z-50 transition-all duration-500 opacity-0 translate-y-4 md:-translate-y-4 pointer-events-none">
+    <div id="syncIndicator" class="fixed bottom-6 right-6 md:top-6 md:bottom-auto bg-slate-800 text-white text-xs px-4 py-2.5 rounded-full shadow-xl flex items-center gap-3 z-50 transition-all duration-500 opacity-0 pointer-events-none">
         <div class="spinner" id="syncSpinner"></div>
         <span id="syncText" class="font-medium tracking-wide">Menyiapkan data offline...</span>
     </div>
 
-    <div class="max-w-7xl mx-auto w-full space-y-6 flex-grow">
+    <div class="max-w-7xl mx-auto w-full space-y-4 flex-grow">
         
-        <!-- Header & Filter Section (Sticky on Mobile for better UX) -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 md:p-6 sticky top-2 z-40">
+        <!-- Header & Filter Section (Compact, Non-Sticky) -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-100 p-4">
             
-            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-5 mb-5">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-3 mb-4">
                 <div>
-                    <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Kinerja</h1>
-                    <p class="text-sm text-slate-500 mt-1 font-medium">Pemantauan Produktivitas Workstation & Individu</p>
+                    <h1 class="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">Dashboard Kinerja</h1>
                 </div>
-                
                 <!-- Tanggal Dinamis Text -->
-                <div class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-semibold border border-indigo-100 flex items-center gap-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <div class="bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg text-xs font-semibold border border-indigo-100 flex items-center gap-2">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                     <span id="activeDateRangeText">Memuat tanggal...</span>
                 </div>
             </div>
             
             <!-- Controls Grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div class="flex flex-col">
-                    <label class="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Titik Tanggal</label>
-                    <input type="date" id="dateSelector" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer">
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Titik Tanggal</label>
+                    <input type="date" id="dateSelector" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
                 </div>
                 
                 <div class="flex flex-col">
-                    <label class="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Rentang Waktu</label>
-                    <select id="rangeSelector" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer appearance-none">
-                        <option value="1" selected>1 Hari (Hanya tanggal terpilih)</option>
-                        <option value="7">1 Minggu (7 Hari ke belakang)</option>
-                        <option value="30">1 Bulan (30 Hari ke belakang)</option>
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Rentang Waktu</label>
+                    <select id="rangeSelector" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
+                        <option value="1" selected>1 Hari (Hari ini)</option>
+                        <option value="7">1 Minggu (7 Hari)</option>
+                        <option value="30">1 Bulan (30 Hari)</option>
                     </select>
                 </div>
 
                 <div class="flex flex-col">
-                    <label class="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Analisis Spesifik</label>
-                    <select id="operatorSelector" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer appearance-none">
+                    <label class="text-[10px] font-bold text-slate-500 mb-1 uppercase tracking-wider">Analisis Spesifik</label>
+                    <select id="operatorSelector" class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer">
                         <option value="ALL">👥 Semua Operator (Tim)</option>
                     </select>
                 </div>
@@ -92,128 +87,124 @@
         </div>
 
         <!-- Dashboard Content -->
-        <div id="dashboardContent" class="space-y-6 fade-in">
+        <div id="dashboardContent" class="space-y-4 fade-in">
             
             <!-- Context Banner (Error / Empty State) -->
-            <div id="contextBanner" class="hidden rounded-xl p-4 text-sm font-medium border"></div>
+            <div id="contextBanner" class="hidden rounded-xl p-3 text-xs font-medium border"></div>
 
             <!-- Summary Cards -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="p-2.5 bg-blue-50 text-blue-600 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
-                        <h3 class="text-sm font-semibold text-slate-500" id="lblTotalOps">Operator Aktif</h3>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="p-1.5 bg-blue-50 text-blue-600 rounded-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                        <h3 class="text-xs font-semibold text-slate-500" id="lblTotalOps">Operator Aktif</h3>
                     </div>
-                    <p class="text-3xl font-extrabold text-slate-800" id="valTotalOps">-</p>
+                    <p class="text-2xl font-extrabold text-slate-800" id="valTotalOps">-</p>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
-                        <h3 class="text-sm font-semibold text-slate-500">Total Throughput</h3>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="p-1.5 bg-emerald-50 text-emerald-600 rounded-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
+                        <h3 class="text-xs font-semibold text-slate-500">Total Throughput</h3>
                     </div>
-                    <p class="text-3xl font-extrabold text-slate-800" id="valTotalThroughput">-</p>
+                    <p class="text-2xl font-extrabold text-slate-800" id="valTotalThroughput">-</p>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="p-2.5 bg-amber-50 text-amber-600 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
-                        <h3 class="text-sm font-semibold text-slate-500">Total Jam Kerja</h3>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="p-1.5 bg-amber-50 text-amber-600 rounded-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                        <h3 class="text-xs font-semibold text-slate-500">Total Jam Kerja</h3>
                     </div>
-                    <p class="text-3xl font-extrabold text-slate-800" id="valTotalHours">-</p>
+                    <p class="text-2xl font-extrabold text-slate-800" id="valTotalHours">-</p>
                 </div>
 
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="p-2.5 bg-purple-50 text-purple-600 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg></div>
-                        <h3 class="text-sm font-semibold text-slate-500">Avg Produktivitas</h3>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col justify-between">
+                    <div class="flex items-center gap-2 mb-2">
+                        <div class="p-1.5 bg-purple-50 text-purple-600 rounded-md"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg></div>
+                        <h3 class="text-xs font-semibold text-slate-500">Avg Produktivitas</h3>
                     </div>
-                    <p class="text-3xl font-extrabold text-slate-800" id="valAvgProductivity">-</p>
+                    <p class="text-2xl font-extrabold text-slate-800" id="valAvgProductivity">-</p>
                 </div>
             </div>
 
             <!-- TREND CHARTS -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- Wrapper luar dengan overflow auto untuk horizontal scroll -->
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 class="text-base font-bold text-slate-800 mb-4">Tren Throughput Harian</h3>
-                    <div class="w-full overflow-x-auto custom-scrollbar">
-                        <div id="wrapperTrendThroughput" style="position: relative; height: 320px; min-width: 100%;">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">Tren Throughput Harian <span class="text-indigo-600">(Hanya Packing)</span></h3>
+                    <div class="w-full overflow-x-auto custom-scrollbar pb-1">
+                        <div id="wrapperTrendThroughput" style="position: relative; height: 260px; min-width: 100%;">
                             <canvas id="chartTrendThroughput"></canvas>
                         </div>
                     </div>
                 </div>
                 
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 class="text-base font-bold text-slate-800 mb-4">Tren Produktivitas (order/mnhr)</h3>
-                    <div class="w-full overflow-x-auto custom-scrollbar">
-                        <div id="wrapperTrendProd" style="position: relative; height: 320px; min-width: 100%;">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">Tren Produktivitas (order/mnhr) <span class="text-indigo-600">(Hanya Packing)</span></h3>
+                    <div class="w-full overflow-x-auto custom-scrollbar pb-1">
+                        <div id="wrapperTrendProd" style="position: relative; height: 260px; min-width: 100%;">
                             <canvas id="chartTrendProd"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- INDIVIDUAL SPECIFIC CHARTS -->
-            <div id="individualSection" class="hidden grid-cols-1 gap-6">
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 class="text-base font-bold text-slate-800 mb-4">Tren Jam Kerja Harian Individu</h3>
-                    <div class="w-full overflow-x-auto custom-scrollbar">
-                        <div id="wrapperTrendHours" style="position: relative; height: 320px; min-width: 100%;">
+            <!-- INDIVIDUAL SPECIFIC TREN JAM KERJA -->
+            <div id="individualSection" class="hidden grid-cols-1 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">Tren Jam Kerja Harian Individu (Seluruh Aktivitas)</h3>
+                    <div class="w-full overflow-x-auto custom-scrollbar pb-1">
+                        <div id="wrapperTrendHours" style="position: relative; height: 260px; min-width: 100%;">
                             <canvas id="chartTrendHours"></canvas>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- ALL OPERATORS SPECIFIC CHARTS -->
-            <div id="allSection" class="hidden space-y-6">
-                
-                <!-- STACKED HOURS CHART (Vertical Scroll handled by dynamic height) -->
-                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                    <h3 class="text-base font-bold text-slate-800 mb-4">Komposisi Jam Kerja Operator per Aktivitas</h3>
+            <!-- ALL OPERATORS SPECIFIC (Stacked Hours) -->
+            <div id="allSection" class="hidden space-y-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
+                    <h3 class="text-sm font-bold text-slate-800 mb-3">Komposisi Jam Kerja Operator per Aktivitas</h3>
                     <div class="w-full overflow-x-auto custom-scrollbar pb-2">
-                        <!-- Height dikalkulasi otomatis di JS agar tidak gepeng -->
                         <div id="wrapperHoursChart" style="position: relative; min-width: 600px;">
                             <canvas id="hoursChart"></canvas>
                         </div>
                     </div>
                 </div>
-
-                <!-- ACTIVITY DETAIL CHARTS CONTAINER -->
-                <div id="activityChartsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <!-- Dinamis Generated -->
-                </div>
-
             </div>
+
+            <!-- ACTIVITY DETAIL CHARTS (Shared by ALL and INDIVIDUAL) -->
+            <div id="activityChartsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <!-- Dinamis Generated -->
+            </div>
+
         </div>
     </div>
 
     <script>
-        // --- 1. INDEXEDDB CACHE SETUP ---
-        const DB_NAME = "ProductivityCache_Pro";
+        const DB_NAME = "ProductivityCache_V4";
         const STORE_NAME = "csvData";
-        let db;
+        let db, allLoadedData = [], chartInstances = {}, activityChartInstances = [], isPreloading = false;
+        
+        const activityColors = [
+            'rgba(59, 130, 246, 0.85)', 'rgba(16, 185, 129, 0.85)', 'rgba(245, 158, 11, 0.85)', 
+            'rgba(139, 92, 246, 0.85)', 'rgba(236, 72, 153, 0.85)', 'rgba(14, 165, 233, 0.85)'
+        ];
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
 
         function initDB() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, 1);
-                request.onerror = () => reject("IndexedDB error");
-                request.onsuccess = event => { db = event.target.result; resolve(db); };
-                request.onupgradeneeded = event => {
-                    db = event.target.result;
-                    if (!db.objectStoreNames.contains(STORE_NAME)) {
-                        db.createObjectStore(STORE_NAME, { keyPath: "dateStr" });
-                    }
-                };
+                request.onerror = () => reject();
+                request.onsuccess = e => { db = e.target.result; resolve(db); };
+                request.onupgradeneeded = e => { db = e.target.result; db.createObjectStore(STORE_NAME, { keyPath: "dateStr" }); };
             });
         }
         function getCache(dateStr) {
             return new Promise(resolve => {
                 const tx = db.transaction([STORE_NAME], "readonly");
-                const request = tx.objectStore(STORE_NAME).get(dateStr);
-                request.onsuccess = () => resolve(request.result ? request.result.data : null);
-                request.onerror = () => resolve(null);
+                const req = tx.objectStore(STORE_NAME).get(dateStr);
+                req.onsuccess = () => resolve(req.result ? req.result.data : null);
+                req.onerror = () => resolve(null);
             });
         }
         function setCache(dateStr, data) {
@@ -224,44 +215,23 @@
             });
         }
 
-        // --- 2. GLOBAL VARIABLES & UTILITIES ---
-        let allLoadedData = []; 
-        let chartInstances = {}; 
-        let activityChartInstances = []; 
-        let isPreloading = false;
-        
-        // Palet warna estetik & soft
-        const activityColors = [
-            'rgba(59, 130, 246, 0.85)', // Blue
-            'rgba(16, 185, 129, 0.85)', // Emerald
-            'rgba(245, 158, 11, 0.85)', // Amber
-            'rgba(139, 92, 246, 0.85)', // Violet
-            'rgba(236, 72, 153, 0.85)', // Pink
-            'rgba(14, 165, 233, 0.85)'  // Sky
-        ];
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
-
         function formatToYYYYMMDD(d) {
             let m = '' + (d.getMonth() + 1), day = '' + d.getDate(), y = d.getFullYear();
-            if (m.length < 2) m = '0' + m;
-            if (day.length < 2) day = '0' + day;
+            if (m.length < 2) m = '0' + m; if (day.length < 2) day = '0' + day;
             return [y, m, day].join('');
         }
         function formatToInputDate(d) {
             let m = '' + (d.getMonth() + 1), day = '' + d.getDate(), y = d.getFullYear();
-            if (m.length < 2) m = '0' + m;
-            if (day.length < 2) day = '0' + day;
+            if (m.length < 2) m = '0' + m; if (day.length < 2) day = '0' + day;
             return [y, m, day].join('-');
         }
         function formatToIndonesianDate(d) {
             return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
         }
         function cleanName(rawName) {
-            if(!rawName) return "Unknown";
-            return rawName.includes(']') ? rawName.split(']')[1].trim() : rawName.trim();
+            return (!rawName) ? "Unknown" : (rawName.includes(']') ? rawName.split(']')[1].trim() : rawName.trim());
         }
 
-        // Custom Chart.js Plugin for Stacked Bar Labels
         Chart.register({
             id: 'stackedBarTextExt',
             afterDatasetsDraw(chart) {
@@ -269,7 +239,7 @@
                 const { ctx, scales: { x } } = chart;
                 ctx.save();
                 ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
-                ctx.fillStyle = '#64748b'; // slate-500
+                ctx.fillStyle = '#64748b';
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
                 
@@ -278,38 +248,26 @@
                 totals.forEach((totalValue, index) => {
                     const meta = chart.getDatasetMeta(0);
                     if(!meta.data[index]) return;
-                    ctx.fillText(`  ${totalValue.toFixed(1)}j`, x.getPixelForValue(totalValue) + 5, meta.data[index].y);
+                    const pct = ((totalValue / 8) * 100).toFixed(1);
+                    ctx.fillText(`  ${totalValue.toFixed(1)}j (${pct}%)`, x.getPixelForValue(totalValue) + 5, meta.data[index].y);
                 });
                 ctx.restore();
             }
         });
 
-        // Konfigurasi Default Chart.js
         Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
         Chart.defaults.color = '#64748b';
         Chart.defaults.scale.grid.color = '#f1f5f9';
 
-        // --- 3. DATA FETCHING (DENGAN CACHE) ---
         async function fetchDailyData(dateYYYYMMDD) {
             const cachedData = await getCache(dateYYYYMMDD);
             if (cachedData) return cachedData; 
-
-            const url = `data/Filtered_workstation_productivity_individual_${dateYYYYMMDD}.csv`;
             try {
-                const response = await fetch(url);
-                if (!response.ok) {
-                    await setCache(dateYYYYMMDD, []);
-                    return []; 
-                }
-                const csvText = await response.text();
+                const res = await fetch(`data/Filtered_workstation_productivity_individual_${dateYYYYMMDD}.csv`);
+                if (!res.ok) { await setCache(dateYYYYMMDD, []); return []; }
+                const csvText = await res.text();
                 return new Promise(resolve => {
-                    Papa.parse(csvText, {
-                        header: true, skipEmptyLines: true,
-                        complete: async function(results) {
-                            await setCache(dateYYYYMMDD, results.data);
-                            resolve(results.data);
-                        }
-                    });
+                    Papa.parse(csvText, { header: true, skipEmptyLines: true, complete: async res => { await setCache(dateYYYYMMDD, res.data); resolve(res.data); } });
                 });
             } catch (e) { return []; }
         }
@@ -320,13 +278,8 @@
             const startDate = new Date(endDateStr);
             startDate.setDate(startDate.getDate() - (rangeDays - 1));
 
-            // Update UI Teks Tanggal
             const dateTextEl = document.getElementById('activeDateRangeText');
-            if (rangeDays === 1) {
-                dateTextEl.innerText = formatToIndonesianDate(endDate);
-            } else {
-                dateTextEl.innerText = `${formatToIndonesianDate(startDate)} - ${formatToIndonesianDate(endDate)}`;
-            }
+            dateTextEl.innerText = rangeDays === 1 ? formatToIndonesianDate(endDate) : `${formatToIndonesianDate(startDate)} - ${formatToIndonesianDate(endDate)}`;
 
             const datesToFetch = [];
             for (let i = 0; i < rangeDays; i++) {
@@ -334,11 +287,9 @@
                 d.setDate(d.getDate() - i);
                 datesToFetch.push(formatToYYYYMMDD(d));
             }
-            datesToFetch.reverse(); // Urutan Kronologis (Lama -> Baru)
+            datesToFetch.reverse(); 
 
-            const allPromises = datesToFetch.map(dStr => fetchDailyData(dStr));
-            const results = await Promise.all(allPromises);
-
+            const results = await Promise.all(datesToFetch.map(dStr => fetchDailyData(dStr)));
             results.forEach((dailyData, index) => {
                 const dStr = datesToFetch[index];
                 if (dailyData.length > 0) {
@@ -352,7 +303,7 @@
             const banner = document.getElementById('contextBanner');
             if (allLoadedData.length === 0) {
                 banner.innerText = "⚠️ Data kosong atau tidak ditemukan pada rentang waktu ini.";
-                banner.className = "bg-rose-50 text-rose-700 border-rose-200 rounded-xl p-4 text-sm font-medium border block fade-in";
+                banner.className = "bg-rose-50 text-rose-700 border-rose-200 rounded-lg p-3 text-xs font-medium border block fade-in";
             } else {
                 banner.className = "hidden";
             }
@@ -364,12 +315,8 @@
         async function startBackgroundPreload(baseDateStr) {
             if(isPreloading) return;
             isPreloading = true;
-            
             const syncInd = document.getElementById('syncIndicator');
-            const syncText = document.getElementById('syncText');
-            
-            syncInd.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4', 'md:-translate-y-4');
-            syncText.innerText = "Sinkronisasi data historis...";
+            syncInd.classList.remove('opacity-0', 'pointer-events-none');
             
             const baseDate = new Date(baseDateStr);
             for (let i = 1; i <= 30; i++) {
@@ -377,18 +324,12 @@
                 d.setDate(d.getDate() - i);
                 await fetchDailyData(formatToYYYYMMDD(d));
             }
-
             document.getElementById('syncSpinner').style.display = 'none';
-            syncText.innerText = `Data siap, navigasi instan aktif.`;
-            
-            setTimeout(() => {
-                syncInd.classList.add('opacity-0', 'translate-y-4', 'md:-translate-y-4');
-                setTimeout(() => syncInd.classList.add('pointer-events-none'), 500);
-            }, 3000);
+            document.getElementById('syncText').innerText = `Data offline siap.`;
+            setTimeout(() => syncInd.classList.add('opacity-0', 'pointer-events-none'), 3000);
             isPreloading = false;
         }
 
-        // --- 4. DATA PROCESSING & RENDERING ---
         function updateOperatorDropdown() {
             const currentSelected = document.getElementById('operatorSelector').value;
             const opsSet = new Set();
@@ -398,37 +339,21 @@
             select.innerHTML = '<option value="ALL">👥 Semua Operator (Tim)</option>';
             
             Array.from(opsSet).sort().forEach(op => {
-                const option = document.createElement('option');
-                option.value = op; option.text = op;
-                select.appendChild(option);
+                const opt = document.createElement('option');
+                opt.value = op; opt.text = op;
+                select.appendChild(opt);
             });
-
             if (opsSet.has(currentSelected)) select.value = currentSelected;
         }
 
-        function destroyMainCharts(id) {
-            if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; }
-        }
-
-        function destroyActivityCharts() {
-            activityChartInstances.forEach(chart => chart.destroy());
-            activityChartInstances = [];
-            document.getElementById('activityChartsContainer').innerHTML = '';
-        }
-
-        // Logic penyesuaian lebar grafik otomatis (Untuk UI Anti-Gepeng)
+        function destroyMainCharts(id) { if (chartInstances[id]) { chartInstances[id].destroy(); delete chartInstances[id]; } }
+        function destroyActivityCharts() { activityChartInstances.forEach(c => c.destroy()); activityChartInstances = []; document.getElementById('activityChartsContainer').innerHTML = ''; }
         function setDynamicWidth(wrapperId, dataCount, minWidthPerItem) {
             const wrapper = document.getElementById(wrapperId);
-            const parentWidth = wrapper.parentElement.clientWidth;
-            const calculatedWidth = dataCount * minWidthPerItem;
-            wrapper.style.width = Math.max(parentWidth, calculatedWidth) + 'px';
+            wrapper.style.width = Math.max(wrapper.parentElement.clientWidth, dataCount * minWidthPerItem) + 'px';
         }
-
-        // Logic penyesuaian tinggi grafik Stacked Bar (Tinggi Dinamis per Operator)
         function setDynamicHeight(wrapperId, dataCount, minHeightPerItem) {
-            const wrapper = document.getElementById(wrapperId);
-            const calculatedHeight = Math.max(350, dataCount * minHeightPerItem);
-            wrapper.style.height = calculatedHeight + 'px';
+            document.getElementById(wrapperId).style.height = Math.max(300, dataCount * minHeightPerItem) + 'px';
         }
 
         function renderDashboard() {
@@ -439,37 +364,47 @@
             let tThroughput = 0, tHours = 0, sumProd = 0, countProd = 0;
             const opsCount = new Set(), trendMap = {}, allUsersHours = {}, activityDetailGroups = {};
 
+            // Initialize trendMap with all dates so X-Axis is consistent even if Packing is missing
+            activeData.forEach(row => { trendMap[row._dateLabel] = { tp: 0, hrs: 0, prodSum: 0, count: 0, allHrs: 0 }; });
+
             activeData.forEach(row => {
-                const throughput = parseInt(row["Total Throughput (Order)"]) || 0;
-                const hours = parseFloat(row["Working Hours (mnhr)"]) || 0;
+                const tp = parseInt(row["Total Throughput (Order)"]) || 0;
+                const hrs = parseFloat(row["Working Hours (mnhr)"]) || 0;
                 const prod = parseInt(row["Hourly Productivity (order/mnhr)"]) || 0;
                 let activity = row["Activity Type"] === 'Runner' || row["Activity Type"] === 'Others' ? 'Others / Runner' : row["Activity Type"];
                 const dateLbl = row._dateLabel, opName = cleanName(row["Ops ID/Name"]);
 
-                tThroughput += throughput; tHours += hours; sumProd += prod; countProd++;
+                tThroughput += tp; tHours += hrs; sumProd += prod; countProd++;
                 opsCount.add(opName);
 
-                if (!trendMap[dateLbl]) trendMap[dateLbl] = { tp: 0, hrs: 0, prodSum: 0, count: 0 };
-                trendMap[dateLbl].tp += throughput; trendMap[dateLbl].hrs += hours; 
-                trendMap[dateLbl].prodSum += prod; trendMap[dateLbl].count++;
+                // Trend khusus Packing (Throughput & Prod) + All Hours
+                trendMap[dateLbl].allHrs += hrs; // untuk grafik individu (seluruh jam)
+                if (activity === 'Packing') {
+                    trendMap[dateLbl].tp += tp; 
+                    trendMap[dateLbl].prodSum += prod; 
+                    trendMap[dateLbl].count++;
+                }
 
+                // Stacked Grouping (Hanya ALL)
                 if (isAll) {
                     if (!allUsersHours[opName]) allUsersHours[opName] = { total: 0, acts: {} };
                     if (!allUsersHours[opName].acts[activity]) allUsersHours[opName].acts[activity] = 0;
-                    allUsersHours[opName].acts[activity] += hours;
-                    allUsersHours[opName].total += hours;
-
-                    if (!activityDetailGroups[activity]) activityDetailGroups[activity] = {};
-                    if (!activityDetailGroups[activity][opName]) {
-                        activityDetailGroups[activity][opName] = { throughput: 0, prodSum: 0, count: 0 };
-                    }
-                    activityDetailGroups[activity][opName].throughput += throughput;
-                    activityDetailGroups[activity][opName].prodSum += prod;
-                    activityDetailGroups[activity][opName].count++;
+                    allUsersHours[opName].acts[activity] += hrs;
+                    allUsersHours[opName].total += hrs;
                 }
+
+                // Activity Chart Grouping (ALL & Individu)
+                let groupKey = isAll ? opName : dateLbl;
+                if (!activityDetailGroups[activity]) activityDetailGroups[activity] = { totalTp: 0, items: {} };
+                if (!activityDetailGroups[activity].items[groupKey]) {
+                    activityDetailGroups[activity].items[groupKey] = { throughput: 0, prodSum: 0, count: 0 };
+                }
+                activityDetailGroups[activity].items[groupKey].throughput += tp;
+                activityDetailGroups[activity].items[groupKey].prodSum += prod;
+                activityDetailGroups[activity].items[groupKey].count++;
+                activityDetailGroups[activity].totalTp += tp;
             });
 
-            // Update Cards
             document.getElementById('lblTotalOps').innerText = isAll ? "Operator Aktif" : "Hari Aktif";
             document.getElementById('valTotalOps').innerText = isAll ? opsCount.size : Object.keys(trendMap).length;
             document.getElementById('valTotalThroughput').innerText = tThroughput.toLocaleString('id-ID');
@@ -478,163 +413,135 @@
 
             const labelsTrend = Object.keys(trendMap); 
             const dataTp = labelsTrend.map(l => trendMap[l].tp);
-            const dataHrs = labelsTrend.map(l => trendMap[l].hrs);
+            const dataHrs = labelsTrend.map(l => trendMap[l].allHrs);
             const dataProd = labelsTrend.map(l => (trendMap[l].count > 0 ? (trendMap[l].prodSum / trendMap[l].count) : 0));
 
-            // Set Lebar Dinamis (Scrollable) untuk Grafik Garis
             setDynamicWidth('wrapperTrendThroughput', labelsTrend.length, 50);
             setDynamicWidth('wrapperTrendProd', labelsTrend.length, 50);
 
-            // TREN THROUGHPUT
             destroyMainCharts('chartTrendThroughput');
             chartInstances['chartTrendThroughput'] = new Chart(document.getElementById('chartTrendThroughput').getContext('2d'), {
-                type: 'line',
-                data: { 
-                    labels: labelsTrend, 
-                    datasets: [{ 
-                        label: 'Total Throughput', data: dataTp, 
-                        borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', 
-                        borderWidth: 2, fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6 
-                    }] 
-                },
+                type: 'line', data: { labels: labelsTrend, datasets: [{ label: 'Throughput (Packing)', data: dataTp, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', borderWidth: 2, fill: true, tension: 0.4 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
             });
 
-            // TREN PRODUKTIVITAS
             destroyMainCharts('chartTrendProd');
             chartInstances['chartTrendProd'] = new Chart(document.getElementById('chartTrendProd').getContext('2d'), {
-                type: 'line',
-                data: { 
-                    labels: labelsTrend, 
-                    datasets: [{ 
-                        label: 'Avg Productivity', data: dataProd, 
-                        borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)', 
-                        borderWidth: 2, fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6 
-                    }] 
-                },
+                type: 'line', data: { labels: labelsTrend, datasets: [{ label: 'Avg Prod (Packing)', data: dataProd, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)', borderWidth: 2, fill: true, tension: 0.4 }] },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
             });
 
             if (!isAll) {
                 document.getElementById('allSection').classList.add('hidden');
                 document.getElementById('individualSection').classList.remove('hidden');
-                destroyActivityCharts(); 
 
                 setDynamicWidth('wrapperTrendHours', labelsTrend.length, 50);
                 destroyMainCharts('chartTrendHours');
                 chartInstances['chartTrendHours'] = new Chart(document.getElementById('chartTrendHours').getContext('2d'), {
-                    type: 'bar',
-                    data: { labels: labelsTrend, datasets: [{ label: 'Jam Kerja (mnhr)', data: dataHrs, backgroundColor: '#f59e0b', borderRadius: 4 }] },
+                    type: 'bar', data: { labels: labelsTrend, datasets: [{ label: 'Jam Kerja (mnhr)', data: dataHrs, backgroundColor: '#f59e0b', borderRadius: 4 }] },
                     options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
                 });
             } else {
                 document.getElementById('allSection').classList.remove('hidden');
                 document.getElementById('individualSection').classList.add('hidden');
 
-                const sortedOps = Object.keys(allUsersHours).sort((a,b) => allUsersHours[a].total - allUsersHours[b].total);
+                // Urutkan Terbanyak ke Terkecil (Descending)
+                const sortedOps = Object.keys(allUsersHours).sort((a,b) => allUsersHours[b].total - allUsersHours[a].total);
                 const totalsArray = sortedOps.map(op => allUsersHours[op].total);
                 
-                // STACKED HOURS - Set Tinggi Dinamis agar Bar tidak gepeng
                 setDynamicHeight('wrapperHoursChart', sortedOps.length, 35);
-                
                 destroyMainCharts('hoursChart');
-                const datasetsStacked = Object.keys(activityDetailGroups).map((act, idx) => ({
-                    label: act,
-                    data: sortedOps.map(op => allUsersHours[op].acts[act] || 0),
+                
+                const actsArray = Object.keys(activityDetailGroups);
+                const datasetsStacked = actsArray.map((act, idx) => ({
+                    label: act, data: sortedOps.map(op => allUsersHours[op].acts[act] || 0),
                     backgroundColor: activityColors[idx % activityColors.length],
                 }));
 
                 chartInstances['hoursChart'] = new Chart(document.getElementById('hoursChart').getContext('2d'), {
-                    type: 'bar',
-                    data: { labels: sortedOps, datasets: datasetsStacked, customTotals: totalsArray },
+                    type: 'bar', data: { labels: sortedOps, datasets: datasetsStacked, customTotals: totalsArray },
                     options: {
-                        indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
-                        layout: { padding: { right: 40 } },
-                        scales: { x: { stacked: true, suggestedMax: Math.max(...totalsArray, 1) * 1.15, grid: { color: '#f8fafc' } }, y: { stacked: true, grid: { display: false } } },
-                        plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } } }
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 80 } },
+                        scales: { x: { stacked: true, suggestedMax: Math.max(...totalsArray, 1) * 1.25, grid: { color: '#f8fafc' } }, y: { stacked: true, grid: { display: false } } },
+                        plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 15 } } }
                     }
                 });
-
-                // ACTIVITY DETAIL CHARTS
-                destroyActivityCharts();
-                const actContainer = document.getElementById('activityChartsContainer');
-
-                Object.keys(activityDetailGroups).forEach(act => {
-                    const opsData = activityDetailGroups[act];
-                    const sortedDetailOps = Object.keys(opsData).map(name => ({
-                        name: name, throughput: opsData[name].throughput,
-                        avgProd: opsData[name].count > 0 ? (opsData[name].prodSum / opsData[name].count) : 0
-                    })).sort((a,b) => b.throughput - a.throughput);
-
-                    if (sortedDetailOps.length === 0) return;
-
-                    const safeActName = act.replace(/[^a-zA-Z0-9]/g, '');
-                    const wrapperId = `wrapper_act_${safeActName}`;
-
-                    const div = document.createElement('div');
-                    div.className = 'bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col';
-                    div.innerHTML = `
-                        <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide">Aktivitas: ${act}</h3>
-                        <div class="w-full overflow-x-auto custom-scrollbar flex-grow">
-                            <div id="${wrapperId}" style="position: relative; height: 300px; min-width: 100%;">
-                                <canvas id="chart_act_${safeActName}"></canvas>
-                            </div>
-                        </div>`;
-                    actContainer.appendChild(div);
-                    
-                    // Set Lebar Dinamis
-                    setDynamicWidth(wrapperId, sortedDetailOps.length, 60);
-                    
-                    const ctx = document.getElementById(`chart_act_${safeActName}`).getContext('2d');
-                    const newChart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: sortedDetailOps.map(d => d.name),
-                            datasets: [
-                                { label: 'Throughput', data: sortedDetailOps.map(d => d.throughput), backgroundColor: '#cbd5e1', borderRadius: 4, yAxisID: 'y' },
-                                { label: 'Avg Produktivitas', data: sortedDetailOps.map(d => d.avgProd), type: 'line', borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.3, pointRadius: 3, yAxisID: 'y1' }
-                            ]
-                        },
-                        options: {
-                            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-                            plugins: { legend: { display: false } },
-                            scales: {
-                                x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 10 } } },
-                                y: { type: 'linear', position: 'left', grid: { color: '#f8fafc' } },
-                                y1: { type: 'linear', position: 'right', grid: { display: false } }
-                            }
-                        }
-                    });
-                    activityChartInstances.push(newChart);
-                });
             }
+
+            // ACTIVITY CHARTS (Render untuk ALL maupun Individu)
+            destroyActivityCharts();
+            const actContainer = document.getElementById('activityChartsContainer');
+
+            Object.keys(activityDetailGroups).forEach(act => {
+                const groupData = activityDetailGroups[act];
+                const sortedDetailOps = Object.keys(groupData.items).map(key => ({
+                    name: key, throughput: groupData.items[key].throughput,
+                    avgProd: groupData.items[key].count > 0 ? (groupData.items[key].prodSum / groupData.items[key].count) : 0
+                })).sort((a,b) => isAll ? (b.throughput - a.throughput) : 0); // Jika individu, pertahankan urutan tanggal
+
+                if (sortedDetailOps.length === 0) return;
+
+                const safeActName = act.replace(/[^a-zA-Z0-9]/g, '');
+                const wrapperId = `wrapper_act_${safeActName}`;
+
+                const div = document.createElement('div');
+                div.className = 'bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-sm font-bold text-slate-800 uppercase tracking-wide">Aktivitas: ${act}</h3>
+                        <span class="text-xs font-semibold bg-emerald-50 text-emerald-700 px-2 py-1 rounded">Total Throughput: ${groupData.totalTp.toLocaleString('id-ID')}</span>
+                    </div>
+                    <div class="w-full overflow-x-auto custom-scrollbar flex-grow">
+                        <div id="${wrapperId}" style="position: relative; height: 260px; min-width: 100%;">
+                            <canvas id="chart_act_${safeActName}"></canvas>
+                        </div>
+                    </div>`;
+                actContainer.appendChild(div);
+                
+                setDynamicWidth(wrapperId, sortedDetailOps.length, 60);
+                
+                const ctx = document.getElementById(`chart_act_${safeActName}`).getContext('2d');
+                const newChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedDetailOps.map(d => d.name),
+                        datasets: [
+                            // Avg Produktivitas order = 1 agar tampil di atas (Z-index higher)
+                            { label: 'Avg Produktivitas', data: sortedDetailOps.map(d => d.avgProd), type: 'line', borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.3, pointRadius: 3, yAxisID: 'y1', order: 1 },
+                            // Throughput order = 2 agar tampil di belakang
+                            { label: 'Throughput', data: sortedDetailOps.map(d => d.throughput), backgroundColor: '#cbd5e1', borderRadius: 4, yAxisID: 'y', order: 2 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false } },
+                        scales: { x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 10 } } }, y: { type: 'linear', position: 'left', grid: { color: '#f8fafc' } }, y1: { type: 'linear', position: 'right', grid: { display: false } } }
+                    }
+                });
+                activityChartInstances.push(newChart);
+            });
         }
 
-        // --- 5. REAKTIVITAS INSTAN (Event Listeners) ---
+        // --- 5. REAKTIVITAS INSTAN ---
         const handleFilterChange = () => {
             const dateVal = document.getElementById('dateSelector').value;
             const rangeVal = parseInt(document.getElementById('rangeSelector').value);
             if (dateVal) loadDataRange(dateVal, rangeVal);
         };
 
-        // Semua filter langsung trigger update tanpa tombol
         document.getElementById('dateSelector').addEventListener('change', handleFilterChange);
         document.getElementById('rangeSelector').addEventListener('change', handleFilterChange);
         document.getElementById('operatorSelector').addEventListener('change', () => {
             if(allLoadedData.length > 0) renderDashboard();
         });
 
-        // INIT SAAT HALAMAN DIBUKA
         window.addEventListener('DOMContentLoaded', async () => {
             try {
                 await initDB();
                 const today = new Date();
                 document.getElementById('dateSelector').value = formatToInputDate(today);
-                
                 await loadDataRange(formatToInputDate(today), 1);
                 startBackgroundPreload(today);
-
-            } catch (e) { console.error("Gagal inisialisasi database cache", e); }
+            } catch (e) {}
         });
     </script>
 </body>
