@@ -3,140 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Produktivitas Workstation Komprehensif</title>
+    <title>Dashboard Produktivitas Workstation</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- PapaParse for CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
-        .chart-container { position: relative; height: 400px; width: 100%; }
-        .chart-container-large { position: relative; height: 650px; width: 100%; }
-        .spinner { border: 3px solid rgba(255, 255, 255, 0.3); width: 16px; height: 16px; border-radius: 50%; border-left-color: #ffffff; animation: spin 1s linear infinite; }
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+        
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #f8fafc; /* Slate 50 - lebih soft untuk mata */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Styling untuk scrollbar agar tampil estetik di desktop & mobile */
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .spinner { 
+            border: 3px solid rgba(255, 255, 255, 0.3); 
+            width: 16px; height: 16px; 
+            border-radius: 50%; 
+            border-left-color: #ffffff; 
+            animation: spin 1s linear infinite; 
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .transition-opacity { transition: opacity 0.5s ease-in-out; }
+        
+        /* Animasi Transisi Halus */
+        .fade-in { animation: fadeIn 0.4s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
-<body class="p-6 text-gray-800 min-h-screen flex flex-col relative">
+<body class="p-4 md:p-6 text-slate-800 min-h-screen flex flex-col relative">
 
     <!-- Background Sync Indicator -->
-    <div id="syncIndicator" class="fixed top-4 right-4 bg-emerald-600 text-white text-xs px-3 py-2 rounded-full shadow-lg flex items-center gap-2 z-50 hidden transition-opacity opacity-100">
+    <div id="syncIndicator" class="fixed bottom-6 right-6 md:top-6 md:bottom-auto bg-slate-800 text-white text-xs px-4 py-2.5 rounded-full shadow-xl flex items-center gap-3 z-50 transition-all duration-500 opacity-0 translate-y-4 md:-translate-y-4 pointer-events-none">
         <div class="spinner" id="syncSpinner"></div>
-        <span id="syncText">Pre-loading data historis...</span>
+        <span id="syncText" class="font-medium tracking-wide">Menyiapkan data offline...</span>
     </div>
 
     <div class="max-w-7xl mx-auto w-full space-y-6 flex-grow">
-        <!-- Header & Controls -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-800">Dashboard Produktivitas</h1>
-                <p class="text-sm text-gray-500 mt-1">Pemantauan Kinerja Workstation & Individu (Komprehensif)</p>
+        
+        <!-- Header & Filter Section (Sticky on Mobile for better UX) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 md:p-6 sticky top-2 z-40">
+            
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-5 mb-5">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Dashboard Kinerja</h1>
+                    <p class="text-sm text-slate-500 mt-1 font-medium">Pemantauan Produktivitas Workstation & Individu</p>
+                </div>
+                
+                <!-- Tanggal Dinamis Text -->
+                <div class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-xl text-sm font-semibold border border-indigo-100 flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    <span id="activeDateRangeText">Memuat tanggal...</span>
+                </div>
             </div>
             
-            <div class="flex flex-wrap items-center gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <!-- Controls Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div class="flex flex-col">
-                    <label class="text-xs font-medium text-gray-600 mb-1">Tanggal Referensi:</label>
-                    <input type="date" id="dateSelector" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500">
+                    <label class="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Titik Tanggal</label>
+                    <input type="date" id="dateSelector" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer">
                 </div>
                 
                 <div class="flex flex-col">
-                    <label class="text-xs font-medium text-gray-600 mb-1">Rentang Waktu:</label>
-                    <select id="rangeSelector" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500">
-                        <option value="1" selected>1 Hari (Hari ini)</option>
-                        <option value="7">1 Minggu (7 Hari)</option>
-                        <option value="30">1 Bulan (30 Hari)</option>
+                    <label class="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Rentang Waktu</label>
+                    <select id="rangeSelector" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer appearance-none">
+                        <option value="1" selected>1 Hari (Hanya tanggal terpilih)</option>
+                        <option value="7">1 Minggu (7 Hari ke belakang)</option>
+                        <option value="30">1 Bulan (30 Hari ke belakang)</option>
                     </select>
                 </div>
 
                 <div class="flex flex-col">
-                    <label class="text-xs font-medium text-gray-600 mb-1">Pilih Operator:</label>
-                    <select id="operatorSelector" class="border border-gray-300 rounded-md px-3 py-1.5 text-sm text-gray-700 shadow-sm focus:ring-2 focus:ring-blue-500 min-w-[150px]">
-                        <option value="ALL">-- Semua Orang --</option>
+                    <label class="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Analisis Spesifik</label>
+                    <select id="operatorSelector" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 font-medium focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all cursor-pointer appearance-none">
+                        <option value="ALL">👥 Semua Operator (Tim)</option>
                     </select>
-                </div>
-
-                <div class="flex flex-col justify-end mt-5">
-                    <button id="btnLoad" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded-md transition shadow-sm font-medium text-sm">
-                        Tampilkan
-                    </button>
                 </div>
             </div>
         </div>
 
         <!-- Dashboard Content -->
-        <div id="dashboardContent" class="space-y-6">
-            <!-- Context Banner -->
-            <div id="contextBanner" class="bg-indigo-50 border border-indigo-100 p-4 rounded-lg text-indigo-800 text-sm font-medium">
-                Memuat data...
-            </div>
+        <div id="dashboardContent" class="space-y-6 fade-in">
+            
+            <!-- Context Banner (Error / Empty State) -->
+            <div id="contextBanner" class="hidden rounded-xl p-4 text-sm font-medium border"></div>
 
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-medium text-gray-500" id="lblTotalOps">Total Operator</h3>
-                    <p class="text-2xl font-bold text-gray-900 mt-2" id="valTotalOps">-</p>
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="p-2.5 bg-blue-50 text-blue-600 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg></div>
+                        <h3 class="text-sm font-semibold text-slate-500" id="lblTotalOps">Operator Aktif</h3>
+                    </div>
+                    <p class="text-3xl font-extrabold text-slate-800" id="valTotalOps">-</p>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-medium text-gray-500">Total Throughput</h3>
-                    <p class="text-2xl font-bold text-gray-900 mt-2" id="valTotalThroughput">-</p>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="p-2.5 bg-emerald-50 text-emerald-600 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg></div>
+                        <h3 class="text-sm font-semibold text-slate-500">Total Throughput</h3>
+                    </div>
+                    <p class="text-3xl font-extrabold text-slate-800" id="valTotalThroughput">-</p>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-medium text-gray-500">Total Jam Kerja</h3>
-                    <p class="text-2xl font-bold text-gray-900 mt-2" id="valTotalHours">-</p>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="p-2.5 bg-amber-50 text-amber-600 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+                        <h3 class="text-sm font-semibold text-slate-500">Total Jam Kerja</h3>
+                    </div>
+                    <p class="text-3xl font-extrabold text-slate-800" id="valTotalHours">-</p>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-sm font-medium text-gray-500">Avg Produktivitas Harian</h3>
-                    <p class="text-2xl font-bold text-gray-900 mt-2" id="valAvgProductivity">-</p>
+
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between hover:shadow-md transition">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="p-2.5 bg-purple-50 text-purple-600 rounded-lg"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg></div>
+                        <h3 class="text-sm font-semibold text-slate-500">Avg Produktivitas</h3>
+                    </div>
+                    <p class="text-3xl font-extrabold text-slate-800" id="valAvgProductivity">-</p>
                 </div>
             </div>
 
             <!-- TREND CHARTS -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-base font-bold text-gray-800 mb-4 text-center">Tren Throughput (Periode Terpilih)</h3>
-                    <div class="chart-container"><canvas id="chartTrendThroughput"></canvas></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Wrapper luar dengan overflow auto untuk horizontal scroll -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="text-base font-bold text-slate-800 mb-4">Tren Throughput Harian</h3>
+                    <div class="w-full overflow-x-auto custom-scrollbar">
+                        <div id="wrapperTrendThroughput" style="position: relative; height: 320px; min-width: 100%;">
+                            <canvas id="chartTrendThroughput"></canvas>
+                        </div>
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-base font-bold text-gray-800 mb-4 text-center">Tren Produktivitas (order/mnhr)</h3>
-                    <div class="chart-container"><canvas id="chartTrendProd"></canvas></div>
+                
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="text-base font-bold text-slate-800 mb-4">Tren Produktivitas (order/mnhr)</h3>
+                    <div class="w-full overflow-x-auto custom-scrollbar">
+                        <div id="wrapperTrendProd" style="position: relative; height: 320px; min-width: 100%;">
+                            <canvas id="chartTrendProd"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- INDIVIDUAL SPECIFIC CHARTS (Hanya tampil jika 1 orang dipilih) -->
+            <!-- INDIVIDUAL SPECIFIC CHARTS -->
             <div id="individualSection" class="hidden grid-cols-1 gap-6">
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-base font-bold text-gray-800 mb-4 text-center">Tren Jam Kerja Harian Individu</h3>
-                    <div class="chart-container"><canvas id="chartTrendHours"></canvas></div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="text-base font-bold text-slate-800 mb-4">Tren Jam Kerja Harian Individu</h3>
+                    <div class="w-full overflow-x-auto custom-scrollbar">
+                        <div id="wrapperTrendHours" style="position: relative; height: 320px; min-width: 100%;">
+                            <canvas id="chartTrendHours"></canvas>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- ALL OPERATORS SPECIFIC CHARTS (Hanya tampil jika "Semua Orang" dipilih) -->
+            <!-- ALL OPERATORS SPECIFIC CHARTS -->
             <div id="allSection" class="hidden space-y-6">
                 
-                <!-- STACKED HOURS CHART -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4">Total Akumulasi Jam Kerja Berdasarkan Aktivitas (Semua Operator)</h3>
-                    <div class="chart-container-large">
-                        <canvas id="hoursChart"></canvas>
+                <!-- STACKED HOURS CHART (Vertical Scroll handled by dynamic height) -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                    <h3 class="text-base font-bold text-slate-800 mb-4">Komposisi Jam Kerja Operator per Aktivitas</h3>
+                    <div class="w-full overflow-x-auto custom-scrollbar pb-2">
+                        <!-- Height dikalkulasi otomatis di JS agar tidak gepeng -->
+                        <div id="wrapperHoursChart" style="position: relative; min-width: 600px;">
+                            <canvas id="hoursChart"></canvas>
+                        </div>
                     </div>
                 </div>
 
-                <!-- INDIVIDUAL ACTIVITY CHARTS CONTAINER (Receiving, Line Haul, dll) -->
-                <div id="activityChartsContainer" class="grid grid-cols-1 gap-6">
-                    <!-- Grafik Receiving, Packing, Line Haul, dll akan di-generate di sini -->
+                <!-- ACTIVITY DETAIL CHARTS CONTAINER -->
+                <div id="activityChartsContainer" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Dinamis Generated -->
                 </div>
 
             </div>
-
         </div>
     </div>
 
     <script>
         // --- 1. INDEXEDDB CACHE SETUP ---
-        const DB_NAME = "ProductivityCacheDB_V3";
-        const STORE_NAME = "csvCache";
+        const DB_NAME = "ProductivityCache_Pro";
+        const STORE_NAME = "csvData";
         let db;
 
         function initDB() {
@@ -152,7 +208,6 @@
                 };
             });
         }
-
         function getCache(dateStr) {
             return new Promise(resolve => {
                 const tx = db.transaction([STORE_NAME], "readonly");
@@ -161,7 +216,6 @@
                 request.onerror = () => resolve(null);
             });
         }
-
         function setCache(dateStr, data) {
             return new Promise(resolve => {
                 const tx = db.transaction([STORE_NAME], "readwrite");
@@ -173,13 +227,19 @@
         // --- 2. GLOBAL VARIABLES & UTILITIES ---
         let allLoadedData = []; 
         let chartInstances = {}; 
-        let activityChartInstances = []; // Khusus untuk grafik Receiving, Line Haul, dll
+        let activityChartInstances = []; 
         let isPreloading = false;
         
+        // Palet warna estetik & soft
         const activityColors = [
-            'rgba(59, 130, 246, 0.85)', 'rgba(16, 185, 129, 0.85)', 'rgba(245, 158, 11, 0.85)', 
-            'rgba(239, 68, 68, 0.85)', 'rgba(139, 92, 246, 0.85)', 'rgba(236, 72, 153, 0.85)'
+            'rgba(59, 130, 246, 0.85)', // Blue
+            'rgba(16, 185, 129, 0.85)', // Emerald
+            'rgba(245, 158, 11, 0.85)', // Amber
+            'rgba(139, 92, 246, 0.85)', // Violet
+            'rgba(236, 72, 153, 0.85)', // Pink
+            'rgba(14, 165, 233, 0.85)'  // Sky
         ];
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Ags", "Sep", "Okt", "Nov", "Des"];
 
         function formatToYYYYMMDD(d) {
             let m = '' + (d.getMonth() + 1), day = '' + d.getDate(), y = d.getFullYear();
@@ -187,28 +247,29 @@
             if (day.length < 2) day = '0' + day;
             return [y, m, day].join('');
         }
-
         function formatToInputDate(d) {
             let m = '' + (d.getMonth() + 1), day = '' + d.getDate(), y = d.getFullYear();
             if (m.length < 2) m = '0' + m;
             if (day.length < 2) day = '0' + day;
             return [y, m, day].join('-');
         }
-
+        function formatToIndonesianDate(d) {
+            return `${d.getDate()} ${monthNames[d.getMonth()]} ${d.getFullYear()}`;
+        }
         function cleanName(rawName) {
             if(!rawName) return "Unknown";
             return rawName.includes(']') ? rawName.split(']')[1].trim() : rawName.trim();
         }
 
-        // --- PLUGIN CHART.JS (Untuk Stacked Text) ---
+        // Custom Chart.js Plugin for Stacked Bar Labels
         Chart.register({
             id: 'stackedBarTextExt',
             afterDatasetsDraw(chart) {
                 if (chart.canvas.id !== 'hoursChart') return;
                 const { ctx, scales: { x } } = chart;
                 ctx.save();
-                ctx.font = '11px Inter, sans-serif';
-                ctx.fillStyle = '#4b5563';
+                ctx.font = '600 11px "Plus Jakarta Sans", sans-serif';
+                ctx.fillStyle = '#64748b'; // slate-500
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
                 
@@ -217,11 +278,16 @@
                 totals.forEach((totalValue, index) => {
                     const meta = chart.getDatasetMeta(0);
                     if(!meta.data[index]) return;
-                    ctx.fillText(`  ${totalValue.toFixed(1)}j`, x.getPixelForValue(totalValue) + 2, meta.data[index].y);
+                    ctx.fillText(`  ${totalValue.toFixed(1)}j`, x.getPixelForValue(totalValue) + 5, meta.data[index].y);
                 });
                 ctx.restore();
             }
         });
+
+        // Konfigurasi Default Chart.js
+        Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.scale.grid.color = '#f1f5f9';
 
         // --- 3. DATA FETCHING (DENGAN CACHE) ---
         async function fetchDailyData(dateYYYYMMDD) {
@@ -245,45 +311,50 @@
                         }
                     });
                 });
-            } catch (e) {
-                return []; 
-            }
+            } catch (e) { return []; }
         }
 
         async function loadDataRange(endDateStr, rangeDays) {
             allLoadedData = [];
             const endDate = new Date(endDateStr);
-            const datesToFetch = [];
+            const startDate = new Date(endDateStr);
+            startDate.setDate(startDate.getDate() - (rangeDays - 1));
 
+            // Update UI Teks Tanggal
+            const dateTextEl = document.getElementById('activeDateRangeText');
+            if (rangeDays === 1) {
+                dateTextEl.innerText = formatToIndonesianDate(endDate);
+            } else {
+                dateTextEl.innerText = `${formatToIndonesianDate(startDate)} - ${formatToIndonesianDate(endDate)}`;
+            }
+
+            const datesToFetch = [];
             for (let i = 0; i < rangeDays; i++) {
                 const d = new Date(endDate);
                 d.setDate(d.getDate() - i);
                 datesToFetch.push(formatToYYYYMMDD(d));
             }
-            datesToFetch.reverse(); 
+            datesToFetch.reverse(); // Urutan Kronologis (Lama -> Baru)
 
-            let loadedDaysCount = 0;
             const allPromises = datesToFetch.map(dStr => fetchDailyData(dStr));
             const results = await Promise.all(allPromises);
 
             results.forEach((dailyData, index) => {
                 const dStr = datesToFetch[index];
                 if (dailyData.length > 0) {
-                    loadedDaysCount++;
                     dailyData.forEach(row => {
-                        row._dateLabel = `${dStr.substring(6,8)}/${dStr.substring(4,6)}`; 
+                        row._dateLabel = `${dStr.substring(6,8)} ${monthNames[parseInt(dStr.substring(4,6))-1]}`; 
                         allLoadedData.push(row);
                     });
                 }
             });
 
+            const banner = document.getElementById('contextBanner');
             if (allLoadedData.length === 0) {
-                document.getElementById('contextBanner').innerText = "Data kosong atau tidak ditemukan pada rentang waktu ini.";
-                document.getElementById('contextBanner').className = "bg-red-50 border border-red-100 p-4 rounded-lg text-red-800 text-sm font-medium";
+                banner.innerText = "⚠️ Data kosong atau tidak ditemukan pada rentang waktu ini.";
+                banner.className = "bg-rose-50 text-rose-700 border-rose-200 rounded-xl p-4 text-sm font-medium border block fade-in";
             } else {
-                let rangeText = rangeDays === 1 ? "1 Hari (Hari ini)" : `${rangeDays} Hari (Akumulasi)`;
-                document.getElementById('contextBanner').innerText = `Menampilkan data aktif dari ${loadedDaysCount} hari kerja - dalam rentang ${rangeText}.`;
-                document.getElementById('contextBanner').className = "bg-indigo-50 border border-indigo-100 p-4 rounded-lg text-indigo-800 text-sm font-medium";
+                banner.className = "hidden";
             }
 
             updateOperatorDropdown();
@@ -296,8 +367,9 @@
             
             const syncInd = document.getElementById('syncIndicator');
             const syncText = document.getElementById('syncText');
-            syncInd.classList.remove('hidden', 'opacity-0');
-            syncText.innerText = "Pre-loading 30 hari ke cache...";
+            
+            syncInd.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4', 'md:-translate-y-4');
+            syncText.innerText = "Sinkronisasi data historis...";
             
             const baseDate = new Date(baseDateStr);
             for (let i = 1; i <= 30; i++) {
@@ -307,24 +379,23 @@
             }
 
             document.getElementById('syncSpinner').style.display = 'none';
-            syncText.innerText = `Cache siap! Data sekarang instan.`;
+            syncText.innerText = `Data siap, navigasi instan aktif.`;
             
             setTimeout(() => {
-                syncInd.classList.add('opacity-0');
-                setTimeout(() => syncInd.classList.add('hidden'), 500);
-            }, 4000);
+                syncInd.classList.add('opacity-0', 'translate-y-4', 'md:-translate-y-4');
+                setTimeout(() => syncInd.classList.add('pointer-events-none'), 500);
+            }, 3000);
             isPreloading = false;
         }
 
         // --- 4. DATA PROCESSING & RENDERING ---
-        
         function updateOperatorDropdown() {
             const currentSelected = document.getElementById('operatorSelector').value;
             const opsSet = new Set();
             allLoadedData.forEach(r => opsSet.add(cleanName(r["Ops ID/Name"])));
             
             const select = document.getElementById('operatorSelector');
-            select.innerHTML = '<option value="ALL">-- Semua Orang --</option>';
+            select.innerHTML = '<option value="ALL">👥 Semua Operator (Tim)</option>';
             
             Array.from(opsSet).sort().forEach(op => {
                 const option = document.createElement('option');
@@ -345,16 +416,28 @@
             document.getElementById('activityChartsContainer').innerHTML = '';
         }
 
+        // Logic penyesuaian lebar grafik otomatis (Untuk UI Anti-Gepeng)
+        function setDynamicWidth(wrapperId, dataCount, minWidthPerItem) {
+            const wrapper = document.getElementById(wrapperId);
+            const parentWidth = wrapper.parentElement.clientWidth;
+            const calculatedWidth = dataCount * minWidthPerItem;
+            wrapper.style.width = Math.max(parentWidth, calculatedWidth) + 'px';
+        }
+
+        // Logic penyesuaian tinggi grafik Stacked Bar (Tinggi Dinamis per Operator)
+        function setDynamicHeight(wrapperId, dataCount, minHeightPerItem) {
+            const wrapper = document.getElementById(wrapperId);
+            const calculatedHeight = Math.max(350, dataCount * minHeightPerItem);
+            wrapper.style.height = calculatedHeight + 'px';
+        }
+
         function renderDashboard() {
             const selectedOp = document.getElementById('operatorSelector').value;
             const isAll = (selectedOp === 'ALL');
             let activeData = isAll ? allLoadedData : allLoadedData.filter(r => cleanName(r["Ops ID/Name"]) === selectedOp);
 
             let tThroughput = 0, tHours = 0, sumProd = 0, countProd = 0;
-            const opsCount = new Set(), trendMap = {}, allUsersHours = {}, allActivities = new Set();
-            
-            // Variabel untuk mengelompokkan data per Aktivitas (Receiving, Line Haul, dll)
-            const activityDetailGroups = {};
+            const opsCount = new Set(), trendMap = {}, allUsersHours = {}, activityDetailGroups = {};
 
             activeData.forEach(row => {
                 const throughput = parseInt(row["Total Throughput (Order)"]) || 0;
@@ -363,24 +446,19 @@
                 let activity = row["Activity Type"] === 'Runner' || row["Activity Type"] === 'Others' ? 'Others / Runner' : row["Activity Type"];
                 const dateLbl = row._dateLabel, opName = cleanName(row["Ops ID/Name"]);
 
-                // KPI Agregasi
                 tThroughput += throughput; tHours += hours; sumProd += prod; countProd++;
                 opsCount.add(opName);
 
-                // Grouping Tren
                 if (!trendMap[dateLbl]) trendMap[dateLbl] = { tp: 0, hrs: 0, prodSum: 0, count: 0 };
                 trendMap[dateLbl].tp += throughput; trendMap[dateLbl].hrs += hours; 
                 trendMap[dateLbl].prodSum += prod; trendMap[dateLbl].count++;
 
                 if (isAll) {
-                    // Grouping Stacked Chart (Berdasarkan Jam Kerja)
-                    allActivities.add(activity);
                     if (!allUsersHours[opName]) allUsersHours[opName] = { total: 0, acts: {} };
                     if (!allUsersHours[opName].acts[activity]) allUsersHours[opName].acts[activity] = 0;
                     allUsersHours[opName].acts[activity] += hours;
                     allUsersHours[opName].total += hours;
 
-                    // Grouping Activity Charts (Receiving, Packing dll)
                     if (!activityDetailGroups[activity]) activityDetailGroups[activity] = {};
                     if (!activityDetailGroups[activity][opName]) {
                         activityDetailGroups[activity][opName] = { throughput: 0, prodSum: 0, count: 0 };
@@ -391,54 +469,76 @@
                 }
             });
 
-            // Update KPI Text
-            document.getElementById('lblTotalOps').innerText = isAll ? "Total Operator Aktif" : "Hari Aktif Bekerja";
+            // Update Cards
+            document.getElementById('lblTotalOps').innerText = isAll ? "Operator Aktif" : "Hari Aktif";
             document.getElementById('valTotalOps').innerText = isAll ? opsCount.size : Object.keys(trendMap).length;
             document.getElementById('valTotalThroughput').innerText = tThroughput.toLocaleString('id-ID');
             document.getElementById('valTotalHours').innerText = tHours.toFixed(1);
             document.getElementById('valAvgProductivity').innerText = countProd > 0 ? (sumProd / countProd).toFixed(0) : 0;
 
-            // Render Trend Charts
             const labelsTrend = Object.keys(trendMap); 
             const dataTp = labelsTrend.map(l => trendMap[l].tp);
             const dataHrs = labelsTrend.map(l => trendMap[l].hrs);
             const dataProd = labelsTrend.map(l => (trendMap[l].count > 0 ? (trendMap[l].prodSum / trendMap[l].count) : 0));
 
+            // Set Lebar Dinamis (Scrollable) untuk Grafik Garis
+            setDynamicWidth('wrapperTrendThroughput', labelsTrend.length, 50);
+            setDynamicWidth('wrapperTrendProd', labelsTrend.length, 50);
+
+            // TREN THROUGHPUT
             destroyMainCharts('chartTrendThroughput');
             chartInstances['chartTrendThroughput'] = new Chart(document.getElementById('chartTrendThroughput').getContext('2d'), {
                 type: 'line',
-                data: { labels: labelsTrend, datasets: [{ label: 'Total Throughput', data: dataTp, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.3 }] },
-                options: { responsive: true, maintainAspectRatio: false }
+                data: { 
+                    labels: labelsTrend, 
+                    datasets: [{ 
+                        label: 'Total Throughput', data: dataTp, 
+                        borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.15)', 
+                        borderWidth: 2, fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6 
+                    }] 
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
             });
 
+            // TREN PRODUKTIVITAS
             destroyMainCharts('chartTrendProd');
             chartInstances['chartTrendProd'] = new Chart(document.getElementById('chartTrendProd').getContext('2d'), {
                 type: 'line',
-                data: { labels: labelsTrend, datasets: [{ label: 'Avg Productivity', data: dataProd, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', borderWidth: 2, fill: true, tension: 0.3 }] },
-                options: { responsive: true, maintainAspectRatio: false }
+                data: { 
+                    labels: labelsTrend, 
+                    datasets: [{ 
+                        label: 'Avg Productivity', data: dataProd, 
+                        borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)', 
+                        borderWidth: 2, fill: true, tension: 0.4, pointRadius: 4, pointHoverRadius: 6 
+                    }] 
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
             });
 
-            // Pemisahan Tampilan Spesifik Individu vs Semua
             if (!isAll) {
                 document.getElementById('allSection').classList.add('hidden');
                 document.getElementById('individualSection').classList.remove('hidden');
-                destroyActivityCharts(); // Bersihkan grafik spesifik aktivitas
+                destroyActivityCharts(); 
 
+                setDynamicWidth('wrapperTrendHours', labelsTrend.length, 50);
                 destroyMainCharts('chartTrendHours');
                 chartInstances['chartTrendHours'] = new Chart(document.getElementById('chartTrendHours').getContext('2d'), {
                     type: 'bar',
                     data: { labels: labelsTrend, datasets: [{ label: 'Jam Kerja (mnhr)', data: dataHrs, backgroundColor: '#f59e0b', borderRadius: 4 }] },
-                    options: { responsive: true, maintainAspectRatio: false }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } }
                 });
             } else {
                 document.getElementById('allSection').classList.remove('hidden');
                 document.getElementById('individualSection').classList.add('hidden');
 
-                // 1. RENDER STACKED HOURS CHART
-                destroyMainCharts('hoursChart');
                 const sortedOps = Object.keys(allUsersHours).sort((a,b) => allUsersHours[a].total - allUsersHours[b].total);
                 const totalsArray = sortedOps.map(op => allUsersHours[op].total);
-                const datasetsStacked = Array.from(allActivities).map((act, idx) => ({
+                
+                // STACKED HOURS - Set Tinggi Dinamis agar Bar tidak gepeng
+                setDynamicHeight('wrapperHoursChart', sortedOps.length, 35);
+                
+                destroyMainCharts('hoursChart');
+                const datasetsStacked = Object.keys(activityDetailGroups).map((act, idx) => ({
                     label: act,
                     data: sortedOps.map(op => allUsersHours[op].acts[act] || 0),
                     backgroundColor: activityColors[idx % activityColors.length],
@@ -448,100 +548,93 @@
                     type: 'bar',
                     data: { labels: sortedOps, datasets: datasetsStacked, customTotals: totalsArray },
                     options: {
-                        indexAxis: 'y', responsive: true, maintainAspectRatio: false, layout: { padding: { right: 50 } },
-                        scales: { x: { stacked: true, suggestedMax: Math.max(...totalsArray, 1) * 1.1 }, y: { stacked: true } }
+                        indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
+                        layout: { padding: { right: 40 } },
+                        scales: { x: { stacked: true, suggestedMax: Math.max(...totalsArray, 1) * 1.15, grid: { color: '#f8fafc' } }, y: { stacked: true, grid: { display: false } } },
+                        plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 20 } } }
                     }
                 });
 
-                // 2. RENDER ACTIVITY DETAIL CHARTS (Receiving, Line Haul, dll)
+                // ACTIVITY DETAIL CHARTS
                 destroyActivityCharts();
                 const actContainer = document.getElementById('activityChartsContainer');
 
                 Object.keys(activityDetailGroups).forEach(act => {
                     const opsData = activityDetailGroups[act];
-                    const sortedDetailOps = Object.keys(opsData).map(name => {
-                        return {
-                            name: name,
-                            throughput: opsData[name].throughput,
-                            avgProd: opsData[name].count > 0 ? (opsData[name].prodSum / opsData[name].count) : 0
-                        };
-                    }).sort((a,b) => b.throughput - a.throughput);
+                    const sortedDetailOps = Object.keys(opsData).map(name => ({
+                        name: name, throughput: opsData[name].throughput,
+                        avgProd: opsData[name].count > 0 ? (opsData[name].prodSum / opsData[name].count) : 0
+                    })).sort((a,b) => b.throughput - a.throughput);
 
                     if (sortedDetailOps.length === 0) return;
 
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'bg-white p-6 rounded-xl shadow-sm border border-gray-100';
-                    wrapper.innerHTML = `<h3 class="text-lg font-bold text-gray-800 mb-4">Kinerja Berdasarkan Aktivitas: ${act}</h3>
-                                         <div class="chart-container"><canvas id="chart_act_${act.replace(/[^a-zA-Z0-9]/g, '')}"></canvas></div>`;
-                    actContainer.appendChild(wrapper);
+                    const safeActName = act.replace(/[^a-zA-Z0-9]/g, '');
+                    const wrapperId = `wrapper_act_${safeActName}`;
+
+                    const div = document.createElement('div');
+                    div.className = 'bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex flex-col';
+                    div.innerHTML = `
+                        <h3 class="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide">Aktivitas: ${act}</h3>
+                        <div class="w-full overflow-x-auto custom-scrollbar flex-grow">
+                            <div id="${wrapperId}" style="position: relative; height: 300px; min-width: 100%;">
+                                <canvas id="chart_act_${safeActName}"></canvas>
+                            </div>
+                        </div>`;
+                    actContainer.appendChild(div);
                     
-                    const ctx = document.getElementById(`chart_act_${act.replace(/[^a-zA-Z0-9]/g, '')}`).getContext('2d');
+                    // Set Lebar Dinamis
+                    setDynamicWidth(wrapperId, sortedDetailOps.length, 60);
+                    
+                    const ctx = document.getElementById(`chart_act_${safeActName}`).getContext('2d');
                     const newChart = new Chart(ctx, {
                         type: 'bar',
                         data: {
                             labels: sortedDetailOps.map(d => d.name),
                             datasets: [
-                                {
-                                    label: 'Total Throughput',
-                                    data: sortedDetailOps.map(d => d.throughput),
-                                    backgroundColor: 'rgba(75, 85, 99, 0.2)',
-                                    borderColor: 'rgba(75, 85, 99, 1)',
-                                    borderWidth: 1, yAxisID: 'y'
-                                },
-                                {
-                                    label: 'Rata-rata Produktivitas',
-                                    data: sortedDetailOps.map(d => d.avgProd),
-                                    type: 'line',
-                                    borderColor: 'rgba(239, 68, 68, 1)',
-                                    backgroundColor: 'rgba(239, 68, 68, 1)',
-                                    borderWidth: 2, marker: 'circle', yAxisID: 'y1'
-                                }
+                                { label: 'Throughput', data: sortedDetailOps.map(d => d.throughput), backgroundColor: '#cbd5e1', borderRadius: 4, yAxisID: 'y' },
+                                { label: 'Avg Produktivitas', data: sortedDetailOps.map(d => d.avgProd), type: 'line', borderColor: '#ef4444', backgroundColor: '#ef4444', borderWidth: 2, tension: 0.3, pointRadius: 3, yAxisID: 'y1' }
                             ]
                         },
                         options: {
-                            responsive: true, maintainAspectRatio: false,
-                            interaction: { mode: 'index', intersect: false },
+                            responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+                            plugins: { legend: { display: false } },
                             scales: {
-                                y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Total Throughput' } },
-                                y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Avg Productivity' }, grid: { drawOnChartArea: false } }
+                                x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 45, font: { size: 10 } } },
+                                y: { type: 'linear', position: 'left', grid: { color: '#f8fafc' } },
+                                y1: { type: 'linear', position: 'right', grid: { display: false } }
                             }
                         }
                     });
                     activityChartInstances.push(newChart);
                 });
-
             }
         }
 
-        // --- 5. EVENTS & INITIALIZATION ---
-        const triggerUpdate = () => {
+        // --- 5. REAKTIVITAS INSTAN (Event Listeners) ---
+        const handleFilterChange = () => {
             const dateVal = document.getElementById('dateSelector').value;
             const rangeVal = parseInt(document.getElementById('rangeSelector').value);
             if (dateVal) loadDataRange(dateVal, rangeVal);
         };
 
-        document.getElementById('btnLoad').addEventListener('click', triggerUpdate);
-        document.getElementById('rangeSelector').addEventListener('change', triggerUpdate);
+        // Semua filter langsung trigger update tanpa tombol
+        document.getElementById('dateSelector').addEventListener('change', handleFilterChange);
+        document.getElementById('rangeSelector').addEventListener('change', handleFilterChange);
         document.getElementById('operatorSelector').addEventListener('change', () => {
             if(allLoadedData.length > 0) renderDashboard();
         });
 
+        // INIT SAAT HALAMAN DIBUKA
         window.addEventListener('DOMContentLoaded', async () => {
             try {
                 await initDB();
-                
                 const today = new Date();
                 document.getElementById('dateSelector').value = formatToInputDate(today);
                 
-                // 1. Muat 1 Hari pertama agar UI langsung muncul
                 await loadDataRange(formatToInputDate(today), 1);
-                
-                // 2. Mulai pre-loading 30 hari ke belakang di background
                 startBackgroundPreload(today);
 
-            } catch (e) {
-                console.error("Gagal inisialisasi database cache", e);
-            }
+            } catch (e) { console.error("Gagal inisialisasi database cache", e); }
         });
     </script>
 </body>
