@@ -14,37 +14,40 @@
         body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
         .chart-container { position: relative; height: 500px; width: 100%; }
         .chart-container-large { position: relative; height: 700px; width: 100%; }
+        /* Simple spinner */
+        .spinner { border: 4px solid rgba(0, 0, 0, 0.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #3b82f6; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="p-6 text-gray-800">
 
     <div class="max-w-7xl mx-auto space-y-6">
         <!-- Header -->
-        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex justify-between items-center">
+        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">Dashboard Monitoring Produktivitas</h1>
-                <p class="text-sm text-gray-500 mt-1">Analisis Kinerja Operator & Workstation</p>
+                <p class="text-sm text-gray-500 mt-1">Menampilkan data otomatis dari folder <span class="font-mono text-blue-600 bg-blue-50 px-1 rounded">/data</span></p>
             </div>
-            <div>
-                <label for="csvFileInput" class="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg shadow transition duration-200">
-                    Unggah File CSV
-                </label>
-                <input type="file" id="csvFileInput" accept=".csv" class="hidden">
+            
+            <!-- Date Picker Selector -->
+            <div class="flex items-center space-x-3 bg-gray-50 px-4 py-2 rounded-lg border border-gray-200">
+                <label for="dateSelector" class="text-sm font-medium text-gray-700">Tanggal Data:</label>
+                <input type="date" id="dateSelector" class="border border-gray-300 rounded-md px-3 py-1.5 text-gray-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                <button id="btnRefresh" class="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-md transition" title="Muat Ulang Data">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                </button>
             </div>
         </div>
 
-        <!-- Loading / Empty State -->
-        <div id="emptyState" class="bg-white p-12 rounded-xl shadow-sm border border-gray-100 text-center">
-            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Belum ada data</h3>
-            <p class="mt-1 text-sm text-gray-500">Unggah file <span class="font-mono">Filtered_workstation_productivity_individual_20261024.csv</span> untuk melihat dashboard.</p>
+        <!-- System Messages (Loading, Errors) -->
+        <div id="systemMessage" class="bg-blue-50 p-6 rounded-xl border border-blue-100 flex flex-col items-center justify-center space-y-3">
+            <div class="spinner" id="loadingSpinner"></div>
+            <h3 class="text-sm font-medium text-blue-900" id="messageText">Mencari data terbaru...</h3>
+            <p class="text-xs text-blue-600 text-center" id="messageSubText">Sistem sedang memeriksa folder /data/</p>
         </div>
 
         <!-- Dashboard Content (Hidden by default) -->
         <div id="dashboardContent" class="hidden space-y-6">
-            
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
@@ -66,31 +69,26 @@
             </div>
 
             <!-- Activity Performance Charts -->
-            <div id="chartsContainer" class="grid grid-cols-1 gap-6">
-                <!-- Charts per activity will be generated here -->
-            </div>
+            <div id="chartsContainer" class="grid grid-cols-1 gap-6"></div>
 
-            <!-- Total Working Hours Contribution (Stacked) -->
+            <!-- Stacked Working Hours Chart -->
             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
                 <h3 class="text-lg font-bold text-gray-800 mb-4">Kontribusi Jam Kerja Berdasarkan Aktivitas per Operator (Target 8 Jam)</h3>
                 <div class="chart-container-large">
                     <canvas id="hoursChart"></canvas>
                 </div>
-                
                 <!-- Detail Table -->
                 <div class="mt-8 overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama Operator</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Jam Kerja</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total (%)</th>
-                                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rincian per Aktivitas (Jam - Persentase dari 8j)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama Operator</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total Jam Kerja</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total (%)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rincian per Aktivitas</th>
                             </tr>
                         </thead>
-                        <tbody id="tableBodyHours" class="bg-white divide-y divide-gray-200 text-sm">
-                            <!-- Table rows generated by JS -->
-                        </tbody>
+                        <tbody id="tableBodyHours" class="bg-white divide-y divide-gray-200 text-sm"></tbody>
                     </table>
                 </div>
             </div>
@@ -98,32 +96,29 @@
     </div>
 
     <script>
-        // Global variables for charts
         let chartInstances = [];
         let hoursChartInstance = null;
 
-        // Custom plugin to draw total text at the end of STACKED horizontal bars
+        // Custom plugins Chart.js
         const stackedBarTextPlugin = {
             id: 'stackedBarTextExt',
             afterDatasetsDraw(chart, args, options) {
                 const { ctx, scales: { x } } = chart;
                 ctx.save();
                 ctx.font = '12px Inter, sans-serif';
-                ctx.fillStyle = '#4b5563'; // Tailwind text-gray-600
+                ctx.fillStyle = '#4b5563';
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'middle';
                 
-                // Get our custom total array passed via config
                 const totals = chart.config.data.customTotals; 
                 if (!totals) return;
 
                 totals.forEach((totalValue, index) => {
-                    // Try to get Y coordinate from the first dataset (all datasets in stack share same Y)
                     const meta = chart.getDatasetMeta(0);
                     if(!meta.data[index]) return;
                     
                     const yPos = meta.data[index].y;
-                    const xPos = x.getPixelForValue(totalValue); // Get X pos based on total hours
+                    const xPos = x.getPixelForValue(totalValue); 
                     
                     const pct = (totalValue / 8) * 100;
                     const text = `  ${totalValue.toFixed(2)} jam (${pct.toFixed(1)}%)`;
@@ -134,49 +129,145 @@
             }
         };
 
-        // Utility: clean operator name string
+        const activityColors = [
+            'rgba(59, 130, 246, 0.85)', 'rgba(16, 185, 129, 0.85)', 'rgba(245, 158, 11, 0.85)', 
+            'rgba(239, 68, 68, 0.85)', 'rgba(139, 92, 246, 0.85)', 'rgba(236, 72, 153, 0.85)'
+        ];
+
+        // --- UTILITIES TANGGAL ---
+        // Format Date object to YYYYMMDD
+        function formatToYYYYMMDD(d) {
+            let month = '' + (d.getMonth() + 1), day = '' + d.getDate(), year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('');
+        }
+        // Format Date object to YYYY-MM-DD (for HTML input date)
+        function formatToInputDate(d) {
+            let month = '' + (d.getMonth() + 1), day = '' + d.getDate(), year = d.getFullYear();
+            if (month.length < 2) month = '0' + month;
+            if (day.length < 2) day = '0' + day;
+            return [year, month, day].join('-');
+        }
+
+        // --- MANAJEMEN UI ---
+        function showMessage(msg, subMsg, isError = false, loading = true) {
+            document.getElementById('dashboardContent').classList.add('hidden');
+            const box = document.getElementById('systemMessage');
+            box.classList.remove('hidden', 'bg-blue-50', 'border-blue-100', 'bg-red-50', 'border-red-200');
+            box.classList.add(isError ? 'bg-red-50' : 'bg-blue-50');
+            box.classList.add(isError ? 'border-red-200' : 'border-blue-100');
+            
+            document.getElementById('loadingSpinner').style.display = loading ? 'block' : 'none';
+            document.getElementById('messageText').innerText = msg;
+            document.getElementById('messageText').className = isError ? 'text-sm font-medium text-red-700' : 'text-sm font-medium text-blue-900';
+            document.getElementById('messageSubText').innerText = subMsg || '';
+            document.getElementById('messageSubText').className = isError ? 'text-xs text-red-600 text-center' : 'text-xs text-blue-600 text-center';
+        }
+
+        function hideMessage() {
+            document.getElementById('systemMessage').classList.add('hidden');
+            document.getElementById('dashboardContent').classList.remove('hidden');
+        }
+
+        // --- FILE FETCHING LOGIC ---
+        // Mencari file terbaru dengan mundur h-1 maksimal 30 hari
+        async function findLatestData() {
+            let currentDate = new Date();
+            let attempts = 0;
+            let maxAttempts = 30;
+
+            showMessage('Mencari data terbaru...', 'Sistem sedang mengecek file dari hari ini mundur ke belakang.');
+
+            while (attempts < maxAttempts) {
+                const dateStr = formatToYYYYMMDD(currentDate);
+                const fileUrl = `data/Filtered_workstation_productivity_individual_${dateStr}.csv`;
+                
+                try {
+                    // Try to fetch file. Using GET since some local servers block HEAD.
+                    const response = await fetch(fileUrl);
+                    if (response.ok) {
+                        // File found! Update Datepicker UI to match the found date
+                        document.getElementById('dateSelector').value = formatToInputDate(currentDate);
+                        parseAndLoadCSV(fileUrl, dateStr);
+                        return;
+                    }
+                } catch (e) {
+                    console.log(`Pengecekan gagal (CORS/Network) untuk ${dateStr}`);
+                }
+                
+                // Kurangi 1 hari
+                currentDate.setDate(currentDate.getDate() - 1);
+                attempts++;
+            }
+            
+            showMessage('Data Tidak Ditemukan', 'Tidak ada data CSV yang ditemukan dalam 30 hari terakhir. Pastikan file ada di dalam folder "data/"', true, false);
+        }
+
+        // Load spesifik file berdasarkan tanggal yang dipilih dari Datepicker
+        async function loadDataByDate(dateStrInput) {
+            const dateObj = new Date(dateStrInput);
+            const dateYYYYMMDD = formatToYYYYMMDD(dateObj);
+            const fileUrl = `data/Filtered_workstation_productivity_individual_${dateYYYYMMDD}.csv`;
+            
+            showMessage(`Memuat data tanggal ${dateYYYYMMDD}...`, `Mencari file ${fileUrl}`);
+            
+            try {
+                const response = await fetch(fileUrl);
+                if (response.ok) {
+                    parseAndLoadCSV(fileUrl, dateYYYYMMDD);
+                } else {
+                    showMessage('File Tidak Ditemukan', `Tidak ada data untuk tanggal ${dateStrInput}. (Error 404)`, true, false);
+                }
+            } catch (e) {
+                showMessage('Terjadi Kesalahan Akses', `Gagal memuat file. Pastikan aplikasi berjalan di Local Server, bukan file://`, true, false);
+            }
+        }
+
+        function parseAndLoadCSV(fileUrl, dateStr) {
+            Papa.parse(fileUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if(results.data.length === 0) {
+                        showMessage('Data Kosong', `File untuk tanggal ${dateStr} kosong.`, true, false);
+                        return;
+                    }
+                    hideMessage();
+                    processData(results.data);
+                },
+                error: function(err) {
+                    showMessage('Gagal membaca CSV', err.message, true, false);
+                }
+            });
+        }
+
+        // Event Listener untuk DatePicker & Refresh Button
+        document.getElementById('dateSelector').addEventListener('change', function(e) {
+            if(e.target.value) {
+                loadDataByDate(e.target.value);
+            }
+        });
+        document.getElementById('btnRefresh').addEventListener('click', function() {
+            const dateVal = document.getElementById('dateSelector').value;
+            if(dateVal) loadDataByDate(dateVal);
+            else findLatestData();
+        });
+
+        // Trigger pencarian saat halaman pertama kali dimuat
+        document.addEventListener("DOMContentLoaded", () => {
+            findLatestData();
+        });
+
         function cleanName(rawName) {
             if(!rawName) return "Unknown";
             return rawName.includes(']') ? rawName.split(']')[1].trim() : rawName.trim();
         }
 
-        // Distinct colors for different activities
-        const activityColors = [
-            'rgba(59, 130, 246, 0.85)',  // Blue - Receiving
-            'rgba(16, 185, 129, 0.85)',  // Emerald - Packing
-            'rgba(245, 158, 11, 0.85)',  // Amber - Line Haul
-            'rgba(239, 68, 68, 0.85)',   // Red - Intra Handover
-            'rgba(139, 92, 246, 0.85)',  // Violet - Others
-            'rgba(236, 72, 153, 0.85)'   // Pink
-        ];
-
-        document.getElementById('csvFileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            Papa.parse(file, {
-                header: true,
-                skipEmptyLines: true,
-                complete: function(results) {
-                    processData(results.data);
-                }
-            });
-        });
-
         function processData(data) {
-            document.getElementById('emptyState').classList.add('hidden');
-            document.getElementById('dashboardContent').classList.remove('hidden');
-
-            // --- 1. OVERALL SUMMARY ---
-            let totalThroughput = 0;
-            let totalHours = 0;
-            const uniqueOps = new Set();
-            let totalProductivityRecords = 0;
-            let sumProductivity = 0;
-
-            const activityGroups = {};
-            const hoursSummary = {}; 
-            const activityTypesSet = new Set();
+            let totalThroughput = 0, totalHours = 0, totalProductivityRecords = 0, sumProductivity = 0;
+            const uniqueOps = new Set(), activityGroups = {}, hoursSummary = {}, activityTypesSet = new Set();
 
             data.forEach(row => {
                 const opNameRaw = row["Ops ID/Name"];
@@ -193,55 +284,42 @@
                 if (activity === 'Runner' || activity === 'Others') activity = 'Others / Runner';
                 
                 activityTypesSet.add(activity);
-
                 totalThroughput += throughput;
                 totalHours += hours;
                 sumProductivity += productivity;
                 totalProductivityRecords++;
 
-                // Group by Activity for single charts
                 if (!activityGroups[activity]) activityGroups[activity] = {};
-                if (!activityGroups[activity][opName]) {
-                    activityGroups[activity][opName] = { throughput: 0, hours: 0, productivityArr: [] };
-                }
+                if (!activityGroups[activity][opName]) activityGroups[activity][opName] = { throughput: 0, hours: 0, productivityArr: [] };
+                
                 activityGroups[activity][opName].throughput += throughput;
                 activityGroups[activity][opName].hours += hours;
                 activityGroups[activity][opName].productivityArr.push(productivity);
 
-                // Group by Operator for Stacked Working Hours chart
-                if (!hoursSummary[opName]) {
-                    hoursSummary[opName] = { totalHours: 0, breakdown: {} };
-                }
-                if (!hoursSummary[opName].breakdown[activity]) {
-                    hoursSummary[opName].breakdown[activity] = 0;
-                }
+                if (!hoursSummary[opName]) hoursSummary[opName] = { totalHours: 0, breakdown: {} };
+                if (!hoursSummary[opName].breakdown[activity]) hoursSummary[opName].breakdown[activity] = 0;
+                
                 hoursSummary[opName].breakdown[activity] += hours;
                 hoursSummary[opName].totalHours += hours;
             });
 
-            // Update Summary UI
             document.getElementById('valTotalOps').innerText = uniqueOps.size;
             document.getElementById('valTotalThroughput').innerText = totalThroughput.toLocaleString('id-ID');
             document.getElementById('valTotalHours').innerText = totalHours.toFixed(1);
             document.getElementById('valAvgProductivity').innerText = totalProductivityRecords > 0 ? (sumProductivity / totalProductivityRecords).toFixed(1) : 0;
 
-
-            // --- 2. CLEAR PREVIOUS CHARTS ---
             chartInstances.forEach(c => c.destroy());
             chartInstances = [];
             const chartsContainer = document.getElementById('chartsContainer');
             chartsContainer.innerHTML = '';
 
-            // --- 3. GENERATE CHARTS PER ACTIVITY (Throughput vs Productivity) ---
             Object.keys(activityGroups).forEach(act => {
                 const opsData = activityGroups[act];
                 const sortedOps = Object.keys(opsData)
                     .map(name => {
                         const arr = opsData[name].productivityArr;
-                        const avgProd = arr.reduce((a,b)=>a+b,0) / arr.length;
-                        return { name, throughput: opsData[name].throughput, avgProd: avgProd };
-                    })
-                    .sort((a, b) => b.throughput - a.throughput);
+                        return { name, throughput: opsData[name].throughput, avgProd: arr.reduce((a,b)=>a+b,0) / arr.length };
+                    }).sort((a, b) => b.throughput - a.throughput);
 
                 if (sortedOps.length === 0) return;
 
@@ -252,151 +330,98 @@
                 chartsContainer.appendChild(wrapper);
 
                 const ctx = document.getElementById(`chart_${act.replace(/[^a-zA-Z0-9]/g, '')}`).getContext('2d');
-                
-                const labels = sortedOps.map(d => d.name);
-                const throughputData = sortedOps.map(d => d.throughput);
-                const productivityData = sortedOps.map(d => d.avgProd);
-
-                const newChart = new Chart(ctx, {
+                chartInstances.push(new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: labels,
+                        labels: sortedOps.map(d => d.name),
                         datasets: [
                             {
-                                label: 'Total Throughput (Order)',
-                                data: throughputData,
-                                backgroundColor: 'rgba(75, 85, 99, 0.2)', // Gray bars
+                                label: 'Total Throughput',
+                                data: sortedOps.map(d => d.throughput),
+                                backgroundColor: 'rgba(75, 85, 99, 0.2)',
                                 borderColor: 'rgba(75, 85, 99, 1)',
-                                borderWidth: 1,
-                                yAxisID: 'y'
+                                borderWidth: 1, yAxisID: 'y'
                             },
                             {
-                                label: 'Rata-rata Produktivitas (order/mnhr)',
-                                data: productivityData,
+                                label: 'Rata-rata Produktivitas',
+                                data: sortedOps.map(d => d.avgProd),
                                 type: 'line',
-                                borderColor: 'rgba(239, 68, 68, 1)', // Red line
+                                borderColor: 'rgba(239, 68, 68, 1)',
                                 backgroundColor: 'rgba(239, 68, 68, 1)',
-                                borderWidth: 2,
-                                marker: 'circle',
-                                yAxisID: 'y1'
+                                borderWidth: 2, marker: 'circle', yAxisID: 'y1'
                             }
                         ]
                     },
                     options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
+                        responsive: true, maintainAspectRatio: false,
                         interaction: { mode: 'index', intersect: false },
                         scales: {
-                            y: {
-                                type: 'linear',
-                                display: true,
-                                position: 'left',
-                                title: { display: true, text: 'Total Throughput' }
-                            },
-                            y1: {
-                                type: 'linear',
-                                display: true,
-                                position: 'right',
-                                title: { display: true, text: 'Avg Productivity' },
-                                grid: { drawOnChartArea: false }
-                            }
+                            y: { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Total Throughput' } },
+                            y1: { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Avg Productivity' }, grid: { drawOnChartArea: false } }
                         }
                     }
-                });
-                chartInstances.push(newChart);
+                }));
             });
 
-
-            // --- 4. STACKED HOURS CONTRIBUTION CHART & TABLE ---
             if (hoursChartInstance) hoursChartInstance.destroy();
-
-            // Prepare Data for Stacked Chart
             const allActivities = Array.from(activityTypesSet);
-            // Sort operators by total hours ascending (so highest is at top of horizontal chart)
-            const sortedOperatorsList = Object.keys(hoursSummary)
-                .sort((a, b) => hoursSummary[a].totalHours - hoursSummary[b].totalHours);
+            const sortedOps = Object.keys(hoursSummary).sort((a, b) => hoursSummary[a].totalHours - hoursSummary[b].totalHours);
             
-            const stackedDatasets = allActivities.map((act, index) => {
-                return {
-                    label: act,
-                    data: sortedOperatorsList.map(op => hoursSummary[op].breakdown[act] || 0),
-                    backgroundColor: activityColors[index % activityColors.length],
-                };
-            });
+            const stackedDatasets = allActivities.map((act, index) => ({
+                label: act,
+                data: sortedOps.map(op => hoursSummary[op].breakdown[act] || 0),
+                backgroundColor: activityColors[index % activityColors.length],
+            }));
 
-            const totalHoursDataArray = sortedOperatorsList.map(op => hoursSummary[op].totalHours);
-
+            const totalHoursDataArray = sortedOps.map(op => hoursSummary[op].totalHours);
             const ctxHr = document.getElementById('hoursChart').getContext('2d');
+            
             hoursChartInstance = new Chart(ctxHr, {
                 type: 'bar',
                 plugins: [stackedBarTextPlugin],
                 data: {
-                    labels: sortedOperatorsList,
+                    labels: sortedOps,
                     datasets: stackedDatasets,
-                    customTotals: totalHoursDataArray // Pass the array for our custom plugin
+                    customTotals: totalHoursDataArray
                 },
                 options: {
                     indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    layout: {
-                        padding: { right: 180 } // Give space on the right for the text plugin
-                    },
+                    responsive: true, maintainAspectRatio: false,
+                    layout: { padding: { right: 180 } },
                     plugins: {
-                        legend: { 
-                            display: true,
-                            position: 'top'
-                        },
+                        legend: { display: true, position: 'top' },
                         tooltip: {
                             callbacks: {
-                                // Customize tooltip to show % of 8 hours
                                 label: function(context) {
-                                    const val = context.raw;
-                                    if (val === 0) return null; // Don't show tooltip for 0 hours
-                                    const pct = (val / 8) * 100;
-                                    return `${context.dataset.label}: ${val.toFixed(2)} jam (${pct.toFixed(1)}% dari target harian)`;
+                                    if (context.raw === 0) return null;
+                                    return `${context.dataset.label}: ${context.raw.toFixed(2)} jam (${((context.raw / 8) * 100).toFixed(1)}%)`;
                                 }
                             }
                         }
                     },
                     scales: {
-                        x: {
-                            stacked: true,
-                            title: { display: true, text: 'Total Jam Kerja (mnhr)' },
-                            suggestedMax: Math.max(...totalHoursDataArray) * 1.15
-                        },
-                        y: {
-                            stacked: true
-                        }
+                        x: { stacked: true, title: { display: true, text: 'Total Jam Kerja (mnhr)' }, suggestedMax: Math.max(...totalHoursDataArray) * 1.15 },
+                        y: { stacked: true }
                     }
                 }
             });
 
-            // Populate the Detail Table
             const tableBody = document.getElementById('tableBodyHours');
             tableBody.innerHTML = '';
-            
-            // For table, reverse to show highest total hours first
-            const tableOperators = [...sortedOperatorsList].reverse();
-            
-            tableOperators.forEach(op => {
-                const tr = document.createElement('tr');
+            [...sortedOps].reverse().forEach(op => {
                 const totalH = hoursSummary[op].totalHours;
                 const totalPct = (totalH / 8) * 100;
-                let pctClass = totalPct > 100 ? 'text-red-600 font-semibold' : 'text-green-600';
-
-                // Build breakdown text for the table
                 const breakdownText = Object.entries(hoursSummary[op].breakdown)
                     .filter(([act, val]) => val > 0)
-                    .map(([act, val]) => `<span class="inline-block bg-gray-100 rounded px-2 py-1 m-1 border border-gray-200">${act}: <b>${val.toFixed(1)}j</b> (${((val/8)*100).toFixed(1)}%)</span>`)
+                    .map(([act, val]) => `<span class="inline-block bg-gray-100 rounded px-2 py-1 m-1 border border-gray-200 text-xs">${act}: <b>${val.toFixed(1)}j</b> (${((val/8)*100).toFixed(1)}%)</span>`)
                     .join('');
 
+                const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap font-medium text-gray-900">${op}</td>
                     <td class="px-6 py-4 whitespace-nowrap text-gray-700">${totalH.toFixed(2)} jam</td>
-                    <td class="px-6 py-4 whitespace-nowrap ${pctClass}">${totalPct.toFixed(1)}%</td>
-                    <td class="px-6 py-4 text-sm text-gray-700 flex flex-wrap gap-1">${breakdownText}</td>
-                `;
+                    <td class="px-6 py-4 whitespace-nowrap ${totalPct > 100 ? 'text-red-600 font-semibold' : 'text-green-600'}">${totalPct.toFixed(1)}%</td>
+                    <td class="px-6 py-4 text-gray-700 flex flex-wrap gap-1">${breakdownText}</td>`;
                 tableBody.appendChild(tr);
             });
         }
